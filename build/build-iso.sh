@@ -73,7 +73,7 @@ log "STEP 2/8 — Bootstrapping Ubuntu 24.04 LTS (${UBUNTU_CODENAME})..."
 log "  This downloads ~400MB. Please wait..."
 debootstrap \
     --arch="${ARCH}" \
-    --include=linux-image-generic,casper,discover,laptop-detect,os-prober \
+    --include=linux-image-generic,casper,laptop-detect,os-prober \
     "${UBUNTU_CODENAME}" \
     "${CHROOT_DIR}" \
     http://archive.ubuntu.com/ubuntu/
