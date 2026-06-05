@@ -18,14 +18,7 @@ export LC_ALL=en_US.UTF-8
 log "Configuring apt repositories..."
 cat > /etc/apt/sources.list << 'EOF'
 # CanveraOS — Ubuntu 24.04 LTS (Noble Numbat) repositories
-deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse
-deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse
-deb http://archive.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse
-deb http://archive.ubuntu.com/ubuntu/ noble-backports main restricted universe multiverse
 
-# Canonical partner (for proprietary software)
-deb http://archive.canonical.com/ubuntu noble partner
-EOF
 
 # Add Flatpak / Flathub support
 cat > /etc/apt/sources.list.d/flathub.list << 'EOF'
