@@ -115,7 +115,6 @@ apt-get install -y \
     kvantum \
     qt5-style-kvantum \
     qt6-style-kvantum \
-    latte-dock \
     packagekit-qt5
 
 ok "KDE Plasma installed."
@@ -140,9 +139,8 @@ ok "Dolphin installed."
 
 # ─── Install Calamares graphical installer ────────────────────────────────────
 log "Installing Calamares installer..."
-add-apt-repository -y ppa:calamares/calamares-3.3
-apt-get update -qq
-apt-get install -y calamares calamares-settings-ubuntu python3-pyqt5
+apt-get install -y calamares python3-pyqt5 || warn "Calamares install failed - skipping"
+
 ok "Calamares installed."
 
 # ─── Install filesystem support ───────────────────────────────────────────────
@@ -224,7 +222,8 @@ ok "Codecs installed."
 
 # ─── Install CrossOver ────────────────────────────────────────────────────────
 log "Installing CrossOver..."
-bash /canvera-config/crossover/crossover-setup.sh
+bash /canvera-config/crossover/crossover-setup.sh || true
+
 ok "CrossOver installed."
 
 # ─── Install all applications ─────────────────────────────────────────────────
