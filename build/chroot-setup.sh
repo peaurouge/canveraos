@@ -35,7 +35,6 @@ apt-get install -y --no-install-recommends \
     casper \
     laptop-detect \
     os-prober \
-    grub-pc \
     grub-efi-amd64 \
     grub-efi-amd64-signed \
     shim-signed \
