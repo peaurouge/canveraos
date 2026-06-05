@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # CanveraOS — Applications Installation Script
-# Installs all default applications: DaVinci Resolve, Steam, Telegram,
-# VLC, WhatsApp, Home Assistant, Organic Maps, ChatGPT PWA, M365 PWAs,
-# Google Antigravity IDE, and configures the dock.
+# Installs applications that can be installed during build via apt.
+# Flatpak apps (Telegram, WhatsApp, etc.) are installed on first boot
+# via /usr/local/bin/canvera-first-boot which runs after network is up.
 # =============================================================================
 set -euo pipefail
 
@@ -18,207 +18,109 @@ log "Installing VLC Media Player..."
 apt-get install -y vlc vlc-plugin-access-extra vlc-plugin-notify
 ok "VLC installed."
 
-# ─── Telegram ─────────────────────────────────────────────────────────────────
-log "Installing Telegram Desktop..."
-apt-get install -y telegram-desktop || {
-    warn "Telegram not in repos — installing via Flatpak..."
-    flatpak install -y flathub org.telegram.desktop
-}
-ok "Telegram installed."
-
 # ─── Steam + Proton ───────────────────────────────────────────────────────────
 log "Installing Steam..."
-# Enable 32-bit architecture for Steam
 dpkg --add-architecture i386
 apt-get update -qq
-apt-get install -y steam-installer
-ok "Steam installed (Proton included via Steam settings on first launch)."
-
-# ─── Home Assistant ───────────────────────────────────────────────────────────
-log "Installing Home Assistant (Flatpak)..."
-flatpak install -y flathub io.homeassistant.home-assistant-gtk || \
-    flatpak install -y flathub com.cassidyjames.butler
-ok "Home Assistant installed."
-
-# ─── WhatsApp ─────────────────────────────────────────────────────────────────
-log "Installing WhatsApp (Flatpak)..."
-flatpak install -y flathub io.github.mimbrero.WhatsAppDesktop || \
-    flatpak install -y flathub com.github.eneshecan.WhatsAppForLinux
-ok "WhatsApp installed."
-
-# ─── Organic Maps ─────────────────────────────────────────────────────────────
-log "Installing Organic Maps..."
-flatpak install -y flathub app.organicmaps.desktop
-ok "Organic Maps installed."
-
-# ─── Chili IPTV Player ────────────────────────────────────────────────────────
-log "Installing Chili IPTV Player..."
-flatpak install -y flathub com.github.rebornos.iptv-player 2>/dev/null || {
-    # Download AppImage as fallback
-    mkdir -p /opt/canvera-apps
-    warn "Chili IPTV not on Flathub — using IPTV-Org player as alternative..."
-    flatpak install -y flathub org.kde.iptv 2>/dev/null || true
-}
-ok "IPTV player installed."
+apt-get install -y steam-installer || warn "Steam install failed — will retry on first boot."
+ok "Steam step complete."
 
 # ─── CopyQ Clipboard Manager ──────────────────────────────────────────────────
 log "Installing CopyQ clipboard manager..."
 apt-get install -y copyq
 ok "CopyQ installed."
 
-# ─── DaVinci Resolve ──────────────────────────────────────────────────────────
-log "Setting up DaVinci Resolve installer..."
-# DaVinci Resolve requires accepting a EULA and free Blackmagic account.
-# We set up a GUI installer launcher that guides user through download.
-mkdir -p /opt/canvera-apps/resolve
-
-cat > /usr/local/bin/canvera-install-resolve << 'SCRIPT'
-#!/usr/bin/env bash
-# GUI launcher for DaVinci Resolve installation
-zenity --info \
-    --title="Install DaVinci Resolve" \
-    --text="DaVinci Resolve requires a free Blackmagic Design account.\n\nClick OK to open the download page in your browser.\nAfter downloading the .deb file, double-click it to install." \
-    --width=400 --height=200
-
-xdg-open "https://www.blackmagicdesign.com/products/davinciresolve" &
-
-zenity --info \
-    --title="Install DaVinci Resolve" \
-    --text="Once downloaded, locate the .deb file in your Downloads folder and double-click it to install.\n\nDaVinci Resolve will appear in your dock after installation." \
-    --width=400 --height=200
-SCRIPT
-chmod +x /usr/local/bin/canvera-install-resolve
-
-# Create dock placeholder icon for DaVinci Resolve
-cat > /usr/share/applications/canvera-install-resolve.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=Install DaVinci Resolve
-Comment=Download and install DaVinci Resolve video editor
-Exec=/usr/local/bin/canvera-install-resolve
-Icon=video-editor
-Terminal=false
-Type=Application
-Categories=AudioVideo;Video;
-StartupNotify=true
-DESKTOP
-ok "DaVinci Resolve setup ready (downloads on first click)."
-
 # ─── Chromium (for PWAs) ──────────────────────────────────────────────────────
 log "Installing Chromium for PWA support..."
-apt-get install -y chromium-browser || apt-get install -y chromium
-ok "Chromium installed."
+apt-get install -y chromium-browser 2>/dev/null || \
+    apt-get install -y chromium 2>/dev/null || \
+    warn "Chromium not found — PWAs will use Firefox."
+ok "Browser installed."
 
-# ─── ChatGPT PWA ──────────────────────────────────────────────────────────────
-log "Creating ChatGPT PWA launcher..."
-cat > /usr/share/applications/chatgpt.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=ChatGPT
-Comment=OpenAI ChatGPT — AI Assistant
-Exec=chromium-browser --app=https://chat.openai.com --class=ChatGPT --name=ChatGPT
-Icon=/usr/share/pixmaps/chatgpt.png
-Terminal=false
-Type=Application
-Categories=Network;Utility;
-StartupNotify=true
-StartupWMClass=ChatGPT
-DESKTOP
+# ─── Firefox ──────────────────────────────────────────────────────────────────
+log "Installing Firefox..."
+apt-get install -y firefox 2>/dev/null || \
+    apt-get install -y firefox-esr 2>/dev/null || \
+    warn "Firefox not found."
+ok "Firefox step complete."
 
-# Download ChatGPT icon
-wget -q -O /usr/share/pixmaps/chatgpt.png \
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/512px-ChatGPT_logo.svg.png" || true
-ok "ChatGPT PWA created."
+# ─── VS Code (IDE) ────────────────────────────────────────────────────────────
+log "Installing VS Code..."
+wget -qO /usr/share/keyrings/microsoft.gpg \
+    https://packages.microsoft.com/keys/microsoft.asc 2>/dev/null && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main" \
+        > /etc/apt/sources.list.d/vscode.list && \
+    apt-get update -qq && \
+    apt-get install -y code && \
+    ok "VS Code installed." || warn "VS Code install failed — skipping."
 
-# ─── Microsoft 365 PWAs ───────────────────────────────────────────────────────
-log "Creating Microsoft 365 PWA launchers (Outlook, Teams, OneDrive)..."
+# ─── DaVinci Resolve ──────────────────────────────────────────────────────────
+log "Setting up DaVinci Resolve installer..."
+mkdir -p /opt/canvera-apps/resolve
 
-# Outlook
-cat > /usr/share/applications/outlook-pwa.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=Outlook
-Comment=Microsoft Outlook — Email and Calendar
-Exec=chromium-browser --app=https://outlook.live.com --class=Outlook --name=Outlook
-Icon=/usr/share/pixmaps/outlook.png
-Terminal=false
-Type=Application
-Categories=Network;Office;Email;
-StartupNotify=true
-StartupWMClass=Outlook
-DESKTOP
+printf '#!/usr/bin/env bash\n# DaVinci Resolve installer launcher\nzenity --info --title="Install DaVinci Resolve" --text="DaVinci Resolve requires a free Blackmagic Design account.\\n\\nClick OK to open the download page in your browser.\\nAfter downloading the .deb file, double-click it to install." --width=400 --height=200\nxdg-open "https://www.blackmagicdesign.com/products/davinciresolve" &\nzenity --info --title="Install DaVinci Resolve" --text="Once downloaded, locate the .deb file in your Downloads folder and double-click it to install." --width=400 --height=200\n' \
+    > /usr/local/bin/canvera-install-resolve
+chmod +x /usr/local/bin/canvera-install-resolve
 
-# Teams
-cat > /usr/share/applications/teams-pwa.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=Microsoft Teams
-Comment=Microsoft Teams — Collaboration
-Exec=chromium-browser --app=https://teams.microsoft.com --class=Teams --name=Teams
-Icon=/usr/share/pixmaps/teams.png
-Terminal=false
-Type=Application
-Categories=Network;Chat;
-StartupNotify=true
-StartupWMClass=Teams
-DESKTOP
+printf '[Desktop Entry]\nName=Install DaVinci Resolve\nComment=Download and install DaVinci Resolve video editor\nExec=/usr/local/bin/canvera-install-resolve\nIcon=video-editor\nTerminal=false\nType=Application\nCategories=AudioVideo;Video;\nStartupNotify=true\n' \
+    > /usr/share/applications/canvera-install-resolve.desktop
+ok "DaVinci Resolve setup ready (downloads on first click)."
 
-# OneDrive
-cat > /usr/share/applications/onedrive-pwa.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=OneDrive
-Comment=Microsoft OneDrive — Cloud Storage
-Exec=chromium-browser --app=https://onedrive.live.com --class=OneDrive --name=OneDrive
-Icon=/usr/share/pixmaps/onedrive.png
-Terminal=false
-Type=Application
-Categories=Network;FileManager;
-StartupNotify=true
-StartupWMClass=OneDrive
-DESKTOP
+# ─── PWA desktop entries (ChatGPT, M365) ─────────────────────────────────────
+log "Creating PWA launchers..."
+BROWSER_CMD="chromium-browser"
+command -v chromium-browser &>/dev/null || BROWSER_CMD="chromium"
+command -v chromium       &>/dev/null || BROWSER_CMD="firefox"
 
-ok "Microsoft 365 PWAs created."
+printf '[Desktop Entry]\nName=ChatGPT\nComment=OpenAI ChatGPT - AI Assistant\nExec=%s --app=https://chat.openai.com --class=ChatGPT\nIcon=internet-web-browser\nTerminal=false\nType=Application\nCategories=Network;Utility;\nStartupWMClass=ChatGPT\n' "$BROWSER_CMD" \
+    > /usr/share/applications/chatgpt.desktop
 
-# ─── Google Antigravity IDE ───────────────────────────────────────────────────
-log "Installing Google Antigravity IDE..."
-# Add Google's signing key and repo
-wget -qO- https://dl.google.com/linux/linux_signing_key.pub | \
-    gpg --dearmor > /usr/share/keyrings/google-chrome.gpg 2>/dev/null || true
+printf '[Desktop Entry]\nName=Outlook\nComment=Microsoft Outlook - Email and Calendar\nExec=%s --app=https://outlook.live.com --class=Outlook\nIcon=internet-mail\nTerminal=false\nType=Application\nCategories=Network;Office;Email;\nStartupWMClass=Outlook\n' "$BROWSER_CMD" \
+    > /usr/share/applications/outlook-pwa.desktop
 
-# Try to install Antigravity IDE (falls back to VS Code if not available)
-wget -q -O /tmp/antigravity-ide.deb \
-    "https://download.antigravity.google/latest/antigravity-ide_amd64.deb" 2>/dev/null || {
-    warn "Antigravity IDE not available — installing VS Code as placeholder..."
-    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | \
-        gpg --dearmor > /usr/share/keyrings/microsoft.gpg
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] \
-        https://packages.microsoft.com/repos/code stable main" > \
-        /etc/apt/sources.list.d/vscode.list
-    apt-get update -qq
-    apt-get install -y code
+printf '[Desktop Entry]\nName=Microsoft Teams\nComment=Microsoft Teams - Collaboration\nExec=%s --app=https://teams.microsoft.com --class=Teams\nIcon=internet-web-browser\nTerminal=false\nType=Application\nCategories=Network;Chat;\nStartupWMClass=Teams\n' "$BROWSER_CMD" \
+    > /usr/share/applications/teams-pwa.desktop
+
+printf '[Desktop Entry]\nName=OneDrive\nComment=Microsoft OneDrive - Cloud Storage\nExec=%s --app=https://onedrive.live.com --class=OneDrive\nIcon=folder-remote\nTerminal=false\nType=Application\nCategories=Network;FileManager;\nStartupWMClass=OneDrive\n' "$BROWSER_CMD" \
+    > /usr/share/applications/onedrive-pwa.desktop
+
+ok "PWA launchers created."
+
+# ─── Flatpak apps first-boot installer ───────────────────────────────────────
+# Telegram, WhatsApp, Home Assistant, Organic Maps cannot be installed in
+# the build chroot (Flatpak needs a running system with network).
+# This script runs ONCE on first boot after Flathub is configured.
+log "Creating first-boot Flatpak installer..."
+printf '#!/usr/bin/env bash\n# CanveraOS First-Boot Flatpak App Installer\n# Runs once when user first logs in, installs Flatpak apps from Flathub.\nset -euo pipefail\nlog() { echo "[FIRSTBOOT] $*"; }\nwarn() { echo "[FIRSTBOOT WARN] $*"; }\n\nlog "Setting up Flathub..."\nflatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true\nflatpak update -y --noninteractive 2>/dev/null || true\n\nlog "Installing Telegram Desktop..."\nflatpak install -y --noninteractive flathub org.telegram.desktop 2>/dev/null || warn "Telegram install failed"\n\nlog "Installing WhatsApp..."\nflatpak install -y --noninteractive flathub io.github.mimbrero.WhatsAppDesktop 2>/dev/null || \\\n    flatpak install -y --noninteractive flathub com.github.eneshecan.WhatsAppForLinux 2>/dev/null || \\\n    warn "WhatsApp install failed"\n\nlog "Installing Organic Maps..."\nflatpak install -y --noninteractive flathub app.organicmaps.desktop 2>/dev/null || warn "Organic Maps install failed"\n\nlog "Installing Home Assistant..."\nflatpak install -y --noninteractive flathub com.cassidyjames.butler 2>/dev/null || warn "Home Assistant install failed"\n\nlog "Flatpak apps installation complete."\n' \
+    > /usr/local/bin/canvera-install-flatpak-apps
+chmod +x /usr/local/bin/canvera-install-flatpak-apps
+
+# Create systemd service to run Flatpak installer at first graphical login
+mkdir -p /etc/systemd/user
+printf '[Unit]\nDescription=CanveraOS First-Boot Flatpak App Installer\nAfter=network-online.target\nConditionPathExists=!/var/lib/canvera/.flatpak-apps-installed\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/canvera-install-flatpak-apps\nExecStartPost=/bin/touch /var/lib/canvera/.flatpak-apps-installed\nRemainAfterExit=yes\n\n[Install]\nWantedBy=default.target\n' \
+    > /etc/systemd/user/canvera-flatpak-apps.service
+systemctl --global enable canvera-flatpak-apps.service 2>/dev/null || true
+
+ok "Flatpak apps will be installed on first boot."
+
+# ─── Workspace Modes switcher ────────────────────────────────────────────────
+log "Installing Workspace Modes switcher..."
+cp /canvera-scripts/workspace-modes.sh /usr/local/bin/canvera-workspace-modes 2>/dev/null || {
+    warn "workspace-modes.sh not found — creating placeholder..."
+    printf '#!/usr/bin/env bash\necho "Workspace Modes: feature coming in next update"\n' \
+        > /usr/local/bin/canvera-workspace-modes
 }
-[[ -f /tmp/antigravity-ide.deb ]] && apt-get install -y /tmp/antigravity-ide.deb && rm /tmp/antigravity-ide.deb
-ok "IDE installed."
+chmod +x /usr/local/bin/canvera-workspace-modes
 
-# ─── Copy desktop files and install icons ────────────────────────────────────
-log "Installing custom app icons and desktop entries..."
+printf '[Desktop Entry]\nName=Workspace Modes\nComment=Switch between Video Edit, Design, and Writing workspace layouts\nExec=/usr/local/bin/canvera-workspace-modes --gui\nIcon=view-grid\nTerminal=false\nType=Application\nCategories=Settings;\nStartupNotify=false\n' \
+    > /usr/share/applications/workspace-modes.desktop
+
+# ─── Custom desktop entries ───────────────────────────────────────────────────
+log "Installing custom desktop entries..."
 if [[ -d /canvera-config/apps/desktop ]]; then
     cp /canvera-config/apps/desktop/*.desktop /usr/share/applications/ 2>/dev/null || true
 fi
 update-desktop-database /usr/share/applications/
 ok "Desktop entries updated."
-
-# ─── Set up Smart Workspace Modes ────────────────────────────────────────────
-log "Installing Workspace Modes switcher..."
-cp /canvera-scripts/workspace-modes.sh /usr/local/bin/canvera-workspace-modes
-chmod +x /usr/local/bin/canvera-workspace-modes
-
-cat > /usr/share/applications/workspace-modes.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=Workspace Modes
-Comment=Switch between Video Edit, Design, and Writing workspace layouts
-Exec=/usr/local/bin/canvera-workspace-modes --gui
-Icon=view-grid
-Terminal=false
-Type=Application
-Categories=Settings;
-StartupNotify=false
-DESKTOP
 
 ok "All applications installed."
