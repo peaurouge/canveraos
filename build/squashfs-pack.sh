@@ -148,7 +148,7 @@ if [[ -f "${ISO_DIR}/boot/grub/bios.img" ]]; then
         -append_partition 2 0xef "${ISO_DIR}/boot/grub/efi.img" \
         -output "${OUTPUT_ISO}" \
         -graft-points \
-        "${ISO_DIR}"
+        "${ISO_DIR}" ; XORRISO_RC=$?
 else
     # UEFI-only ISO
     xorriso \
@@ -164,7 +164,22 @@ else
         -append_partition 2 0xef "${ISO_DIR}/boot/grub/efi.img" \
         -output "${OUTPUT_ISO}" \
         -graft-points \
-        "${ISO_DIR}"
+        "${ISO_DIR}" ; XORRISO_RC=$?
+fi
+
+# xorriso exit code 32 = MISHAP (non-fatal warning, ISO still created OK)
+# Only fail on other non-zero exit codes
+if [[ $XORRISO_RC -ne 0 && $XORRISO_RC -ne 32 ]]; then
+    echo "ERROR: xorriso failed with exit code $XORRISO_RC"
+    exit $XORRISO_RC
+elif [[ $XORRISO_RC -eq 32 ]]; then
+    warn "xorriso MISHAP (non-fatal) — ISO created successfully despite warning."
+fi
+
+# Verify the ISO was actually created
+if [[ ! -f "${OUTPUT_ISO}" ]]; then
+    echo "ERROR: ISO file not found at ${OUTPUT_ISO}"
+    exit 1
 fi
 
 ok "ISO created: ${OUTPUT_ISO}"
