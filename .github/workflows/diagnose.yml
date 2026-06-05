@@ -1,0 +1,91 @@
+name: "🔍 CanveraOS Build Diagnostics"
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: "Diagnose Build Environment"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: "📥 Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: "📊 System info"
+        run: |
+          echo "=== OS ==="
+          lsb_release -a
+          echo ""
+          echo "=== Disk space ==="
+          df -h /
+          echo ""
+          echo "=== RAM ==="
+          free -h
+
+      - name: "🧹 Free disk space"
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /usr/local/share/dotnet
+          sudo rm -rf /opt/ghc /usr/local/.ghcup /usr/local/share/powershell /usr/share/swift
+          sudo rm -rf /opt/hostedtoolcache/CodeQL /opt/hostedtoolcache/node
+          sudo rm -rf /opt/hostedtoolcache/Ruby /opt/hostedtoolcache/PyPy /opt/hostedtoolcache/go
+          docker system prune -af --volumes 2>/dev/null || true
+          sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
+          echo "=== Disk after cleanup ==="
+          df -h /
+
+      - name: "🔧 Install build tools"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            debootstrap squashfs-tools xorriso grub-pc-bin \
+            grub-efi-amd64-bin mtools dosfstools wget curl
+          debootstrap --version
+          echo "✅ Tools installed."
+
+      - name: "🌐 Network test"
+        run: |
+          curl -s --max-time 10 http://archive.ubuntu.com/ubuntu/ > /dev/null \
+            && echo "✅ Ubuntu archive reachable." \
+            || { echo "❌ Cannot reach Ubuntu archive!"; exit 1; }
+
+      - name: "🧪 Test debootstrap Noble — KEY TEST"
+        run: |
+          echo "Testing Ubuntu Noble debootstrap (~3 minutes)..."
+          sudo debootstrap \
+            --arch=amd64 \
+            --variant=minbase \
+            noble \
+            /tmp/noble-test \
+            http://archive.ubuntu.com/ubuntu/ \
+            && echo "✅ debootstrap SUCCESS!" \
+            || {
+              echo "❌ debootstrap FAILED"
+              cat /tmp/noble-test/debootstrap/debootstrap.log 2>/dev/null | tail -30 || true
+              exit 1
+            }
+
+      - name: "📋 Check project scripts"
+        run: |
+          echo "=== Checking build scripts ==="
+          for f in build/build-iso.sh build/chroot-setup.sh build/codecs-install.sh \
+                   build/apps-install.sh build/squashfs-pack.sh; do
+            [[ -f "$f" ]] && echo "  ✅ $f" || echo "  ❌ MISSING: $f"
+          done
+          echo ""
+          echo "=== Checking bash syntax ==="
+          for f in build/*.sh scripts/*.sh; do
+            bash -n "$f" && echo "  ✅ $f syntax OK" || echo "  ❌ $f SYNTAX ERROR"
+          done
+
+      - name: "✅ Done"
+        run: df -h /
