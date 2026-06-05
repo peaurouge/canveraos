@@ -106,6 +106,7 @@ apt-get install -y \
     kvantum \
     qt5-style-kvantum \
     qt6-style-kvantum \
+    plank \
     packagekit-qt5
 
 ok "KDE Plasma installed."
