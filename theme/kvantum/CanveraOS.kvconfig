@@ -1,0 +1,86 @@
+# CanveraOS — Kvantum Theme Configuration
+# Glassmorphism (frosted glass) theme for KDE widgets, menus, panels.
+# Place in /usr/share/Kvantum/CanveraOS/CanveraOS.kvconfig
+
+[%General]
+author=CanveraOS Team
+comment=Frosted glass theme inspired by macOS Tahoe
+x11drag=all
+alt_mnemonic=true
+left_tabs=false
+attach_active_tab=true
+mirror_doc_tabs=true
+group_toolbar_buttons=false
+toolbar_interior_spacing=2
+spread_progressbar=true
+progressbar_animation=true
+menuitem_separator_height=2
+transient_scrollbar=false
+transient_groove=false
+scroll_width=10
+scroll_arrows=false
+scroll_min_extent=36
+center_toolbar_handle=false
+check_interior=true
+composite=true
+tooltip_delay=-1
+
+# Blur/transparency for panels (frosted glass effect)
+translucent_windows=true
+blurring=true
+popup_blurring=true
+reduce_window_opacity=20
+reduce_menu_opacity=15
+
+# Rounded corners — macOS Tahoe style
+frame_corner=10
+button_corner=8
+menu_corner=12
+scrollbar_corner=5
+tooltip_corner=8
+
+# Fonts
+large_icon_size=32
+small_icon_size=16
+
+[GeneralColors]
+window.color=#1a1a2e
+base.color=#0d0d1a
+alt.base.color=#16162a
+button.color=#2a2a42
+light.color=#3a3a56
+mid.light.color=#2e2e48
+mid.color=#252540
+dark.color=#1a1a30
+shadow.color=#0a0a18
+highlight.color=#4f8ef7
+inactive.highlight.color=#3a6cc0
+highlighted.text.color=#ffffff
+active.text.color=#4f8ef7
+inactive.text.color=#8888aa
+disabled.text.color=#55556a
+text.color=#e8e8f0
+window.text.color=#e8e8f0
+button.text.color=#e8e8f0
+tooltip.base.color=#1e1e38
+tooltip.text.color=#e8e8f0
+link.color=#4f8ef7
+link.visited.color=#a066d3
+
+[Hacks]
+transparent_ktitle_label=true
+transparent_dolphin_view=true
+transparent_pcmanfm_sidepane=false
+transparent_pcmanfm_view=true
+lxqtmainmenu_iconsize=24
+no_selection_tint=false
+tint_on_mouseover=true
+opaque_colors=false
+respect_darkness=true
+force_size_grip=true
+iconless_pushbutton=false
+iconless_menu=false
+disabled_icon_opacity=50
+normal_default_pushbutton=true
+single_top_toolbar=false
+no_inactiveness=true

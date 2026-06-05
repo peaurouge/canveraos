@@ -1,0 +1,66 @@
+# CanveraOS — Dolphin File Manager Configuration
+# Pre-configured to behave like macOS Finder.
+# Place at: ~/.config/dolphinrc
+
+[General]
+BrowseThroughArchives=false
+ConfirmClosingMultipleTabs=true
+EditableUrl=false
+HomeUrl=file:///home/$USER
+OpenNewTabAfterLastTab=true
+RememberOpenedTabs=true
+ShowFullPath=true
+ShowFullPathInTitlebar=true
+ShowStatusBar=true
+ShowToolbar=true
+ShowZoomSlider=true
+SortingChoice=SortByName
+UseTabForSwitchingSplitView=false
+Version=202
+ViewPropsTimestamp=2024,1,1,0,0,0
+
+[DetailsMode]
+DateWidth=120
+GroupWidth=100
+NameWidth=260
+PermissionsWidth=0
+RatingWidth=0
+SizeWidth=80
+TagsWidth=0
+TypeWidth=120
+
+[IconsMode]
+IconSize=48
+PreviewSize=96
+
+[KFileDialog Settings]
+Allow Expansion=false
+Automatically select filename extension=true
+
+[MainWindow]
+MenuBar=Disabled
+ToolBarsMovable=Disabled
+
+[PreviewSettings]
+Plugins=appimagethumbnail,audiothumbnail,blenderthumbnail,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,directorythumbnail,fontthumbnail,imagethumbnail,jpegthumbnail,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,mobithumbnail,opendocumentthumbnail,pdf,ffmpegthumbs,svgthumbnail,textthumbnail,krita,xcfthumbnail
+
+[PlacesPanel]
+IconSize=22
+TagsVisible=true
+
+[Search]
+Location=Everywhere
+SearchFor=FileAndFolders
+
+[SettingsDialog]
+Width=640
+Height=480
+
+[ViewModes]
+# Start in icon/thumbnail view by default (like macOS Finder)
+ViewMode=0
+
+[Sidebar]
+# Show sidebar open by default
+Visible=true
+Width=200
