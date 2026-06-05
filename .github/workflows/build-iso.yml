@@ -137,7 +137,9 @@ jobs:
         run: |
           ISO=$(ls CanveraOS-*.iso | head -1)
           echo "File: ${ISO}  |  Size: $(du -sh ${ISO} | cut -f1)"
-          sha256sum "${ISO}" > "${ISO}.sha256"
+          sudo sha256sum "${ISO}" > "/tmp/${ISO}.sha256"
+          sudo mv "/tmp/${ISO}.sha256" "${ISO}.sha256"
+          sudo chown runner:runner "${ISO}" "${ISO}.sha256" 2>/dev/null || true
           cat "${ISO}.sha256"
           {
             echo "## ✅ CanveraOS Build Complete"
