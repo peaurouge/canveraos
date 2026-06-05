@@ -75,7 +75,6 @@ apt-get install -y \
     sox \
     libsox-fmt-all \
     alsa-utils \
-    pulseaudio \
     pipewire \
     pipewire-audio \
     pipewire-alsa \
