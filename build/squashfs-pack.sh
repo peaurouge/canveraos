@@ -125,9 +125,11 @@ touch "${ISO_DIR}/.disk/base_installable"
 # ─── Build the ISO ────────────────────────────────────────────────────────────
 log "Building bootable ISO with xorriso..."
 
-# Build ISO command — adapt based on whether BIOS image exists
+# Temporarily disable exit-on-error so we can handle xorriso's exit code 32
+# (xorriso exits 32 for MISHAP warnings even when ISO is created successfully)
+set +e
+
 if [[ -f "${ISO_DIR}/boot/grub/bios.img" ]]; then
-    # Full BIOS + UEFI hybrid ISO
     xorriso \
         -as mkisofs \
         -iso-level 3 \
@@ -148,9 +150,9 @@ if [[ -f "${ISO_DIR}/boot/grub/bios.img" ]]; then
         -append_partition 2 0xef "${ISO_DIR}/boot/grub/efi.img" \
         -output "${OUTPUT_ISO}" \
         -graft-points \
-        "${ISO_DIR}" ; XORRISO_RC=$?
+        "${ISO_DIR}"
+    XORRISO_RC=$?
 else
-    # UEFI-only ISO
     xorriso \
         -as mkisofs \
         -iso-level 3 \
@@ -164,21 +166,23 @@ else
         -append_partition 2 0xef "${ISO_DIR}/boot/grub/efi.img" \
         -output "${OUTPUT_ISO}" \
         -graft-points \
-        "${ISO_DIR}" ; XORRISO_RC=$?
+        "${ISO_DIR}"
+    XORRISO_RC=$?
 fi
 
-# xorriso exit code 32 = MISHAP (non-fatal warning, ISO still created OK)
-# Only fail on other non-zero exit codes
-if [[ $XORRISO_RC -ne 0 && $XORRISO_RC -ne 32 ]]; then
+set -e  # Re-enable exit-on-error
+
+# Exit code 32 = MISHAP (non-fatal, ISO was created successfully)
+if [[ $XORRISO_RC -eq 32 ]]; then
+    warn "xorriso MISHAP (non-fatal warning) — ISO created successfully."
+elif [[ $XORRISO_RC -ne 0 ]]; then
     echo "ERROR: xorriso failed with exit code $XORRISO_RC"
     exit $XORRISO_RC
-elif [[ $XORRISO_RC -eq 32 ]]; then
-    warn "xorriso MISHAP (non-fatal) — ISO created successfully despite warning."
 fi
 
-# Verify the ISO was actually created
+# Verify ISO was actually written
 if [[ ! -f "${OUTPUT_ISO}" ]]; then
-    echo "ERROR: ISO file not found at ${OUTPUT_ISO}"
+    echo "ERROR: ISO file was not created at ${OUTPUT_ISO}"
     exit 1
 fi
 
