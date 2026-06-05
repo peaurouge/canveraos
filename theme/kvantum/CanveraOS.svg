@@ -1,0 +1,201 @@
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+<!--
+  CanveraOS Kvantum SVG Theme
+  Glassmorphism / macOS Tahoe-inspired visual style
+  Uses frosted glass panels with subtle blur, rounded corners, and blue accents
+-->
+
+<!-- ======== WINDOW / PANEL BACKGROUND ======== -->
+<rect id="window-bg" x="0" y="0" width="100" height="100"
+      rx="12" ry="12"
+      fill="#1e1e2e" fill-opacity="0.85"
+      stroke="#4f8ef7" stroke-width="0.5" stroke-opacity="0.3"/>
+
+<!-- ======== BUTTON: NORMAL ======== -->
+<g id="button-normal">
+  <rect x="0" y="0" width="100" height="100"
+        rx="8" ry="8"
+        fill="#2a2a3e" fill-opacity="0.9"
+        stroke="#4f8ef7" stroke-width="0.8" stroke-opacity="0.4"/>
+</g>
+
+<!-- ======== BUTTON: HOVER ======== -->
+<g id="button-hover">
+  <rect x="0" y="0" width="100" height="100"
+        rx="8" ry="8"
+        fill="#4f8ef7" fill-opacity="0.8"
+        stroke="#6aa3ff" stroke-width="1" stroke-opacity="0.6"/>
+</g>
+
+<!-- ======== BUTTON: PRESSED ======== -->
+<g id="button-pressed">
+  <rect x="0" y="0" width="100" height="100"
+        rx="8" ry="8"
+        fill="#3a6fd8" fill-opacity="0.95"
+        stroke="#4f8ef7" stroke-width="1" stroke-opacity="0.8"/>
+</g>
+
+<!-- ======== BUTTON: DISABLED ======== -->
+<g id="button-disabled">
+  <rect x="0" y="0" width="100" height="100"
+        rx="8" ry="8"
+        fill="#2a2a3e" fill-opacity="0.4"
+        stroke="#555577" stroke-width="0.5" stroke-opacity="0.3"/>
+</g>
+
+<!-- ======== INPUT FIELD: NORMAL ======== -->
+<g id="lineedit-normal">
+  <rect x="0" y="0" width="100" height="100"
+        rx="6" ry="6"
+        fill="#1a1a2e" fill-opacity="0.95"
+        stroke="#4f8ef7" stroke-width="0.8" stroke-opacity="0.5"/>
+</g>
+
+<!-- ======== INPUT FIELD: FOCUS ======== -->
+<g id="lineedit-focus">
+  <rect x="0" y="0" width="100" height="100"
+        rx="6" ry="6"
+        fill="#1a1a2e" fill-opacity="0.95"
+        stroke="#4f8ef7" stroke-width="1.5" stroke-opacity="0.9"/>
+</g>
+
+<!-- ======== TOOLBAR ======== -->
+<g id="toolbar">
+  <rect x="0" y="0" width="100" height="100"
+        fill="#161625" fill-opacity="0.92"
+        stroke="none"/>
+</g>
+
+<!-- ======== MENU ======== -->
+<g id="menu">
+  <rect x="0" y="0" width="100" height="100"
+        rx="10" ry="10"
+        fill="#1e1e2e" fill-opacity="0.95"
+        stroke="#4f8ef7" stroke-width="0.5" stroke-opacity="0.25"/>
+</g>
+
+<!-- ======== MENU ITEM: HOVER ======== -->
+<g id="menuitem-hover">
+  <rect x="0" y="0" width="100" height="100"
+        rx="6" ry="6"
+        fill="#4f8ef7" fill-opacity="0.7"
+        stroke="none"/>
+</g>
+
+<!-- ======== SCROLL BAR ======== -->
+<g id="scrollbar-groove">
+  <rect x="40" y="0" width="20" height="100"
+        rx="10" ry="10"
+        fill="#2a2a3e" fill-opacity="0.6"
+        stroke="none"/>
+</g>
+
+<g id="scrollbar-slider-normal">
+  <rect x="40" y="0" width="20" height="100"
+        rx="10" ry="10"
+        fill="#4f8ef7" fill-opacity="0.5"
+        stroke="none"/>
+</g>
+
+<g id="scrollbar-slider-hover">
+  <rect x="38" y="0" width="24" height="100"
+        rx="12" ry="12"
+        fill="#4f8ef7" fill-opacity="0.75"
+        stroke="none"/>
+</g>
+
+<!-- ======== PROGRESS BAR ======== -->
+<g id="progressbar-groove">
+  <rect x="0" y="40" width="100" height="20"
+        rx="10" ry="10"
+        fill="#2a2a3e" fill-opacity="0.7"
+        stroke="none"/>
+</g>
+
+<g id="progressbar-contents">
+  <rect x="0" y="40" width="100" height="20"
+        rx="10" ry="10"
+        fill="#4f8ef7" fill-opacity="0.85"
+        stroke="none"/>
+</g>
+
+<!-- ======== TAB BAR ======== -->
+<g id="tab-normal">
+  <rect x="0" y="0" width="100" height="100"
+        rx="8" ry="8"
+        fill="#1e1e2e" fill-opacity="0.7"
+        stroke="#4f8ef7" stroke-width="0.3" stroke-opacity="0.2"/>
+</g>
+
+<g id="tab-active">
+  <rect x="0" y="0" width="100" height="100"
+        rx="8" ry="8"
+        fill="#2a2a3e" fill-opacity="0.95"
+        stroke="#4f8ef7" stroke-width="1" stroke-opacity="0.6"/>
+</g>
+
+<!-- ======== TOOLTIP ======== -->
+<g id="tooltip">
+  <rect x="0" y="0" width="100" height="100"
+        rx="8" ry="8"
+        fill="#1a1a2e" fill-opacity="0.97"
+        stroke="#4f8ef7" stroke-width="0.5" stroke-opacity="0.4"/>
+</g>
+
+<!-- ======== TRAFFIC LIGHT CLOSE BUTTON ======== -->
+<g id="titlebar-close-normal">
+  <circle cx="50" cy="50" r="45"
+          fill="#ff5f57" fill-opacity="0.9"
+          stroke="#e0443e" stroke-width="1"/>
+</g>
+
+<!-- ======== TRAFFIC LIGHT MINIMIZE BUTTON ======== -->
+<g id="titlebar-minimize-normal">
+  <circle cx="50" cy="50" r="45"
+          fill="#febc2e" fill-opacity="0.9"
+          stroke="#d4a017" stroke-width="1"/>
+</g>
+
+<!-- ======== TRAFFIC LIGHT MAXIMIZE BUTTON ======== -->
+<g id="titlebar-maximize-normal">
+  <circle cx="50" cy="50" r="45"
+          fill="#28c840" fill-opacity="0.9"
+          stroke="#1aaa2f" stroke-width="1"/>
+</g>
+
+<!-- ======== CHECKBOX: CHECKED ======== -->
+<g id="checkbox-checked">
+  <rect x="5" y="5" width="90" height="90"
+        rx="6" ry="6"
+        fill="#4f8ef7" fill-opacity="0.9"
+        stroke="#6aa3ff" stroke-width="1"/>
+  <path d="M 20,50 L 40,70 L 80,25"
+        stroke="white" stroke-width="8" stroke-linecap="round"
+        fill="none"/>
+</g>
+
+<!-- ======== CHECKBOX: UNCHECKED ======== -->
+<g id="checkbox-unchecked">
+  <rect x="5" y="5" width="90" height="90"
+        rx="6" ry="6"
+        fill="#1a1a2e" fill-opacity="0.8"
+        stroke="#4f8ef7" stroke-width="1" stroke-opacity="0.5"/>
+</g>
+
+<!-- ======== SLIDER HANDLE ======== -->
+<g id="slider-handle">
+  <circle cx="50" cy="50" r="42"
+          fill="#4f8ef7" fill-opacity="0.95"
+          stroke="#6aa3ff" stroke-width="2"/>
+</g>
+
+<!-- ======== GROUPBOX ======== -->
+<g id="groupbox">
+  <rect x="0" y="0" width="100" height="100"
+        rx="10" ry="10"
+        fill="#1e1e2e" fill-opacity="0.5"
+        stroke="#4f8ef7" stroke-width="0.5" stroke-opacity="0.3"/>
+</g>
+
+</svg>
