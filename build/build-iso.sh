@@ -29,9 +29,9 @@ PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
 # ─── Dependency check ─────────────────────────────────────────────────────────
 check_deps() {
     log "Checking build dependencies..."
-    local deps=(debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin \
-                mtools dosfstools isolinux syslinux-utils curl wget rsync \
-                python3 git apt-cacher-ng)
+        local deps=(debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin \
+                mtools dosfstools curl wget rsync python3 git)
+
     local missing=()
     for dep in "${deps[@]}"; do
         command -v "$dep" &>/dev/null || dpkg -l "$dep" &>/dev/null || missing+=("$dep")
@@ -73,7 +73,7 @@ log "STEP 2/8 — Bootstrapping Ubuntu 24.04 LTS (${UBUNTU_CODENAME})..."
 log "  This downloads ~400MB. Please wait..."
 debootstrap \
     --arch="${ARCH}" \
-    --include=linux-image-generic,casper,laptop-detect,os-prober \
+    --include=sudo,curl,wget,ca-certificates,gnupg,lsb-release \
     "${UBUNTU_CODENAME}" \
     "${CHROOT_DIR}" \
     http://archive.ubuntu.com/ubuntu/
