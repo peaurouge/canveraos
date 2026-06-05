@@ -1,0 +1,128 @@
+name: "🏗️ Build CanveraOS ISO"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "ISO version (e.g. 1.0.0)"
+        required: true
+        default: "1.0.0"
+      create_release:
+        description: "Create GitHub Release with the ISO?"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build-iso:
+    name: "Build CanveraOS v${{ github.event.inputs.version }}"
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
+    steps:
+      - name: "📊 Show disk space (before cleanup)"
+        run: df -h /
+
+      - name: "🧹 Free disk space (removes unused SDKs)"
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/.ghcup
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/node
+          sudo rm -rf /opt/hostedtoolcache/Ruby
+          sudo rm -rf /opt/hostedtoolcache/PyPy
+          sudo rm -rf /opt/hostedtoolcache/go
+          docker system prune -af --volumes 2>/dev/null || true
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          echo "=== Disk space AFTER cleanup ==="
+          df -h /
+
+      - name: "📥 Checkout CanveraOS repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: "🔧 Install ISO build tools"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            debootstrap squashfs-tools xorriso grub-pc-bin \
+            grub-efi-amd64-bin grub-efi-amd64-signed mtools \
+            dosfstools isolinux syslinux-utils wget curl rsync \
+            python3 python3-pip git ca-certificates apt-transport-https \
+            zenity wmctrl
+          echo "✅ Build tools installed."
+
+      - name: "📊 Verify disk space (must be > 25 GB free)"
+        run: |
+          FREE_GB=$(df -BG / | awk 'NR==2 {gsub("G",""); print $4}')
+          echo "Free disk space: ${FREE_GB} GB"
+          if [[ ${FREE_GB} -lt 25 ]]; then
+            echo "❌ Not enough space. Need 25 GB, have ${FREE_GB} GB."
+            exit 1
+          fi
+          echo "✅ Sufficient disk space (${FREE_GB} GB free)."
+
+      - name: "🏗️ Build CanveraOS ISO (60-90 minutes)"
+        env:
+          CANVERA_VERSION: ${{ github.event.inputs.version }}
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          chmod +x build/*.sh
+          chmod +x scripts/*.sh
+          find config -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+          sudo --preserve-env=CANVERA_VERSION,DEBIAN_FRONTEND bash build/build-iso.sh
+          echo "=== Build complete ==="
+          ls -lh CanveraOS-*.iso 2>/dev/null || { echo "❌ ISO not found!"; exit 1; }
+
+      - name: "🔒 Generate SHA256 checksum"
+        run: |
+          ISO_FILE=$(ls CanveraOS-*.iso | head -1)
+          sha256sum "${ISO_FILE}" > "${ISO_FILE}.sha256"
+          echo "## ✅ CanveraOS Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "| File | ${ISO_FILE} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Size | $(du -sh ${ISO_FILE} | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA256 | $(cut -d' ' -f1 ${ISO_FILE}.sha256) |" >> $GITHUB_STEP_SUMMARY
+
+      - name: "📦 Upload ISO as artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "CanveraOS-${{ github.event.inputs.version }}-amd64"
+          path: |
+            CanveraOS-*.iso
+            CanveraOS-*.iso.sha256
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: "🚀 Create GitHub Release with ISO"
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ github.event.inputs.version }}"
+          name: "CanveraOS v${{ github.event.inputs.version }} — Aurora"
+          body: |
+            ## CanveraOS v${{ github.event.inputs.version }}
+            Built on Ubuntu 24.04 LTS + KDE Plasma 6.
+            Flash to USB with Balena Etcher and install on your machine.
+          files: |
+            CanveraOS-*.iso
+            CanveraOS-*.iso.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "📊 Final report"
+        if: always()
+        run: |
+          df -h /
+          ls -lh CanveraOS-*.iso 2>/dev/null || echo "No ISO found."
