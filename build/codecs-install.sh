@@ -6,8 +6,9 @@
 # =============================================================================
 set -euo pipefail
 
-log() { echo -e "\033[0;36m[CODEC]\033[0m $*"; }
-ok()  { echo -e "\033[0;32m[  OK  ]\033[0m $*"; }
+log()  { echo -e "\033[0;36m[CODEC]\033[0m $*"; }
+ok()   { echo -e "\033[0;32m[  OK  ]\033[0m $*"; }
+warn() { echo -e "\033[1;33m[ WARN ]\033[0m $*"; }
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -49,28 +50,28 @@ apt-get install -y \
     libvpx-dev \
     libtheora-dev \
     libdav1d-dev \
-    libsvtav1-dev \
     libmpeg2-4 \
     mpeg2dec \
-    libdvdread8 \
-    libdvdnav4 \
     v4l-utils
+
+# Optional video codec dev libs (may not exist in Noble)
+apt-get install -y libsvtav1-dev 2>/dev/null || warn "libsvtav1-dev not available — skipping"
+apt-get install -y libdvdread8  2>/dev/null || apt-get install -y libdvdread-dev 2>/dev/null || warn "DVD read lib not found"
+apt-get install -y libdvdnav4  2>/dev/null || warn "libdvdnav4 not found"
 
 ok "Video codecs installed."
 
 # ─── Audio codecs ─────────────────────────────────────────────────────────────
 log "Installing audio codecs (AAC, MP3, FLAC, OGG, ALAC, AIFF, AC3, DTS, Opus)..."
+# ALAC (Apple Lossless) is supported via FFmpeg's libavcodec-extra — no separate package needed
 apt-get install -y \
     libmp3lame-dev \
-    libfdk-aac-dev \
     libvorbis-dev \
     libflac-dev \
     libopus-dev \
     libopusfile-dev \
-    libalac-dev \
     lame \
     faad \
-    faac \
     sox \
     libsox-fmt-all \
     alsa-utils \
@@ -80,39 +81,49 @@ apt-get install -y \
     pipewire-alsa \
     pipewire-pulse \
     pipewire-jack \
-    wireplumber \
-    libwireplumber-0.4-0
+    wireplumber
+
+# Optional audio libs (names vary by Ubuntu version)
+apt-get install -y libfdk-aac-dev  2>/dev/null || warn "libfdk-aac-dev not available"
+apt-get install -y faac            2>/dev/null || warn "faac not available"
+apt-get install -y libwireplumber-0.4-0 2>/dev/null || \
+    apt-get install -y libwireplumber-0.5-0 2>/dev/null || warn "wireplumber lib version varies"
 
 ok "Audio codecs installed."
 
 # ─── Image format support ─────────────────────────────────────────────────────
 log "Installing image format support (HEIC, AVIF, WebP, RAW, TIFF, SVG)..."
 apt-get install -y \
-    libheif-dev \
     libheif1 \
-    heif-gdk-pixbuf \
-    libavif-dev \
-    libavif16 \
     libwebp-dev \
     librsvg2-dev \
     libtiff-dev \
-    libraw-dev \
-    libraw23 \
-    darktable \
-    rawtherapee \
-    kimageformats \
-    qt6-imageformats
+    libraw-dev
+
+# Optional image libs (package names vary in Noble)
+apt-get install -y heif-gdk-pixbuf  2>/dev/null || warn "heif-gdk-pixbuf not found"
+apt-get install -y libheif-dev      2>/dev/null || warn "libheif-dev not found"
+apt-get install -y libavif-dev      2>/dev/null || warn "libavif-dev not found"
+apt-get install -y libavif16        2>/dev/null || \
+    apt-get install -y libavif15    2>/dev/null || warn "libavif version varies"
+apt-get install -y libraw23         2>/dev/null || \
+    apt-get install -y libraw22     2>/dev/null || warn "libraw version varies"
+apt-get install -y kimageformats    2>/dev/null || warn "kimageformats not found"
+apt-get install -y qt6-imageformats 2>/dev/null || warn "qt6-imageformats not found"
+apt-get install -y darktable        2>/dev/null || warn "darktable not found"
+apt-get install -y rawtherapee      2>/dev/null || warn "rawtherapee not found"
 
 ok "Image formats installed."
 
-# ─── Container format support (MKV, MOV, AVI, WebM, FLV, WMV, MTS etc.) ─────
-log "Installing container format support..."
+# ─── Container format support ─────────────────────────────────────────────────
+log "Installing container format support (MKV, MOV, AVI, WebM, FLV, WMV, MTS)..."
 apt-get install -y \
     mkvtoolnix \
-    mkvtoolnix-gui \
-    mediainfo \
-    mediainfo-gui \
-    mp4v2-utils
+    mediainfo
+
+apt-get install -y mkvtoolnix-gui 2>/dev/null || warn "mkvtoolnix-gui not found"
+apt-get install -y mediainfo-gui  2>/dev/null || warn "mediainfo-gui not found"
+apt-get install -y mp4v2-utils    2>/dev/null || warn "mp4v2-utils not found"
 
 ok "Container formats supported."
 
@@ -121,24 +132,20 @@ log "Installing hardware video acceleration (VA-API, VDPAU for NVIDIA)..."
 apt-get install -y \
     va-driver-all \
     vdpau-driver-all \
-    libvdpau-va-gl1 \
     mesa-va-drivers \
-    mesa-vdpau-drivers \
-    intel-media-va-driver \
-    nvidia-vaapi-driver || warn "Some VA/VDPAU drivers may not apply — this is normal."
+    mesa-vdpau-drivers 2>/dev/null || warn "Some VA/VDPAU drivers not available — OK for now."
+
+apt-get install -y libvdpau-va-gl1      2>/dev/null || true
+apt-get install -y intel-media-va-driver 2>/dev/null || true
+apt-get install -y nvidia-vaapi-driver   2>/dev/null || true
 
 ok "Hardware video acceleration configured."
 
-# ─── FFmpeg compile flags verification ───────────────────────────────────────
+# ─── FFmpeg verification ───────────────────────────────────────────────────────
 log "Verifying FFmpeg codec support..."
 ffmpeg -codecs 2>/dev/null | grep -E "(hevc|h264|av1|vp9|prores|dnxhd|opus|flac|aac)" | \
     awk '{print "  ✓ " $2}' | head -20
 ok "FFmpeg codec verification complete."
-
-# ─── ProRes and DNxHD via FFmpeg ──────────────────────────────────────────────
-log "Verifying ProRes and DNxHD support..."
-ffmpeg -encoders 2>/dev/null | grep -i "prores\|dnx" | awk '{print "  ✓ " $2}' || \
-    warn "ProRes/DNxHD encode requires specific FFmpeg build — decode is always available."
 
 ok "All codecs and media formats installed successfully."
 echo ""
