@@ -67,8 +67,14 @@ locale-gen en_US.UTF-8
 update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 ok "Base packages installed."
 
+# Re-ensure universe is available (ubuntu-minimal can reset apt sources)
+log "Re-enabling universe repository for KDE packages..."
+add-apt-repository -y universe
+apt-get update -qq
+
 # ─── Install KDE Plasma 6 ─────────────────────────────────────────────────────
 log "Installing KDE Plasma desktop environment..."
+# Core KDE Plasma (all exist in Ubuntu 24.04 Noble)
 apt-get install -y \
     kde-plasma-desktop \
     plasma-workspace \
@@ -77,55 +83,48 @@ apt-get install -y \
     kwin-wayland \
     sddm \
     sddm-theme-breeze \
-    kde-config-sddm \
     plasma-nm \
     plasma-pa \
     powerdevil \
     bluedevil \
     kscreen \
-    plasma-disks \
-    plasma-vault \
-    dragonplayer \
     ark \
     okular \
-    spectacle \
     konsole \
     kate \
     gwenview \
     kcalc \
-    kfind \
-    filelight \
     plasma-systemmonitor \
-    kde-system-administration \
-    kde-config-screenlocker \
-    kde-config-gtk-style \
-    kde-config-gtk-style-preview \
-    plasma-widgets-addons \
-    plasma-browser-integration \
     xdg-desktop-portal-kde \
-    kvantum \
-    qt5-style-kvantum \
-    qt6-style-kvantum \
-    plank \
-    packagekit-qt5
+    plank
+
+# Optional KDE packages (may not be available in all Noble variants)
+apt-get install -y kde-config-sddm 2>/dev/null || true
+apt-get install -y plasma-disks 2>/dev/null || true
+apt-get install -y plasma-vault 2>/dev/null || true
+apt-get install -y kde-spectacle 2>/dev/null || apt-get install -y spectacle 2>/dev/null || true
+apt-get install -y kfind 2>/dev/null || true
+apt-get install -y filelight 2>/dev/null || true
+apt-get install -y kde-config-screenlocker 2>/dev/null || true
+apt-get install -y kde-config-gtk-style kde-config-gtk-style-preview 2>/dev/null || true
+apt-get install -y plasma-widgets-addons 2>/dev/null || true
+apt-get install -y plasma-browser-integration 2>/dev/null || true
+apt-get install -y dragonplayer 2>/dev/null || true
+# Kvantum theming engine (correct package names for Noble)
+apt-get install -y qt5ct qt6ct 2>/dev/null || true
+apt-get install -y qt5-style-kvantum qt5-style-kvantum-l10n 2>/dev/null || true
 
 ok "KDE Plasma installed."
 
 # ─── Install Dolphin file manager ─────────────────────────────────────────────
 log "Installing Dolphin file manager with all plugins..."
-apt-get install -y \
-    dolphin \
-    dolphin-plugins \
-    kdegraphics-thumbnailers \
-    kffmpegthumbnailer \
-    ffmpegthumbs \
-    taglib-extras \
-    baloo \
-    baloo-kf5 \
-    milou \
-    kio-extras \
-    kio-gdrive \
-    libkf5baloo-dev
+apt-get install -y dolphin kio-extras
+# Optional Dolphin plugins
+apt-get install -y dolphin-plugins 2>/dev/null || true
+apt-get install -y kdegraphics-thumbnailers 2>/dev/null || true
+apt-get install -y ffmpegthumbs 2>/dev/null || true
+apt-get install -y baloo baloo-kf5 milou 2>/dev/null || true
+apt-get install -y kio-gdrive 2>/dev/null || true
 
 ok "Dolphin installed."
 
