@@ -16,15 +16,11 @@ export LC_ALL=en_US.UTF-8
 
 # ─── Configure apt ────────────────────────────────────────────────────────────
 log "Configuring apt repositories..."
-cat > /etc/apt/sources.list << 'EOF'
-# CanveraOS — Ubuntu 24.04 LTS (Noble Numbat) repositories
-
-
-# Add Flatpak / Flathub support
-cat > /etc/apt/sources.list.d/flathub.list << 'EOF'
-# Flathub — added via flatpak remote-add in post-install
-EOF
-
+truncate -s 0 /etc/apt/sources.list
+echo "deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb http://archive.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb http://archive.ubuntu.com/ubuntu/ noble-backports main restricted universe multiverse" >> /etc/apt/sources.list
 apt-get update -qq
 ok "APT configured."
 
@@ -36,6 +32,9 @@ apt-get install -y --no-install-recommends \
     linux-image-generic \
     linux-headers-generic \
     linux-firmware \
+    casper \
+    laptop-detect \
+    os-prober \
     grub-pc \
     grub-efi-amd64 \
     grub-efi-amd64-signed \
@@ -130,10 +129,13 @@ apt-get install -y \
 
 ok "Dolphin installed."
 
-# ─── Install Calamares graphical installer ────────────────────────────────────
+# ─── Install Calamares graphical installer ────────────────────────────────────────
 log "Installing Calamares installer..."
-apt-get install -y calamares python3-pyqt5 || warn "Calamares install failed - skipping"
-
+# Calamares is available in Ubuntu 24.04 universe repo directly (no PPA needed)
+apt-get install -y calamares calamares-settings-ubuntu python3-pyqt5 || {
+    warn "calamares-settings-ubuntu not found, installing calamares only..."
+    apt-get install -y calamares python3-pyqt5 || warn "Calamares install failed — skipping"
+}
 ok "Calamares installed."
 
 # ─── Install filesystem support ───────────────────────────────────────────────
@@ -152,15 +154,9 @@ apt-get install -y \
     gvfs-backends \
     gvfs-fuse
 
-# APFS (read/write via apfs-fuse)
-apt-get install -y apfs-fuse || {
-    warn "apfs-fuse not in repos — building from source..."
-    apt-get install -y build-essential cmake libfuse-dev bzip2 zlib1g-dev
-    git clone --depth=1 https://github.com/sgan81/apfs-fuse.git /tmp/apfs-fuse
-    cd /tmp/apfs-fuse
-    git submodule update --init
-    cmake -DCMAKE_BUILD_TYPE=Release . && make -j$(nproc) && make install
-    cd / && rm -rf /tmp/apfs-fuse
+# APFS (read-only via apfs-fuse — optional, non-fatal)
+apt-get install -y apfs-fuse 2>/dev/null || {
+    warn "apfs-fuse not in repos — skipping APFS support (optional feature)."
 }
 ok "Filesystem support installed."
 
@@ -186,21 +182,7 @@ ok "Fonts installed."
 log "Configuring SDDM..."
 systemctl enable sddm
 mkdir -p /etc/sddm.conf.d
-cat > /etc/sddm.conf.d/canvera.conf << 'EOF'
-[Theme]
-Current=breeze
-
-[General]
-DisplayServer=wayland
-GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
-
-[Autologin]
-Relogin=false
-
-[Users]
-MaximumUid=60000
-MinimumUid=1000
-EOF
+printf '[Theme]\nCurrent=breeze\n\n[General]\nDisplayServer=wayland\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n\n[Autologin]\nRelogin=false\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' > /etc/sddm.conf.d/canvera.conf
 ok "SDDM configured."
 
 # ─── Apply KDE theme configuration ───────────────────────────────────────────
@@ -213,11 +195,13 @@ log "Installing media codecs..."
 bash /codecs-install.sh
 ok "Codecs installed."
 
-# ─── Install CrossOver ────────────────────────────────────────────────────────
+# ─── Install CrossOver (optional — requires internet at build time) ────────────────
 log "Installing CrossOver..."
-bash /canvera-config/crossover/crossover-setup.sh || true
-
-ok "CrossOver installed."
+bash /canvera-config/crossover/crossover-setup.sh || {
+    warn "CrossOver install failed or timed out — will be available for manual install."
+    warn "Users can install CrossOver after booting CanveraOS."
+}
+ok "CrossOver step complete."
 
 # ─── Install all applications ─────────────────────────────────────────────────
 log "Installing all default applications..."
@@ -229,22 +213,8 @@ log "Setting up first-boot service..."
 cp /canvera-scripts/first-boot.sh /usr/local/bin/canvera-first-boot
 chmod +x /usr/local/bin/canvera-first-boot
 
-cat > /etc/systemd/system/canvera-first-boot.service << 'EOF'
-[Unit]
-Description=CanveraOS First Boot Setup
-After=graphical.target sddm.service
-ConditionPathExists=!/var/lib/canvera/.first-boot-done
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/local/bin/canvera-first-boot
-ExecStartPost=/bin/mkdir -p /var/lib/canvera
-ExecStartPost=/bin/touch /var/lib/canvera/.first-boot-done
-
-[Install]
-WantedBy=multi-user.target
-EOF
+mkdir -p /etc/systemd/system
+printf '[Unit]\nDescription=CanveraOS First Boot Setup\nAfter=graphical.target sddm.service\nConditionPathExists=!/var/lib/canvera/.first-boot-done\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/local/bin/canvera-first-boot\nExecStartPost=/bin/mkdir -p /var/lib/canvera\nExecStartPost=/bin/touch /var/lib/canvera/.first-boot-done\n\n[Install]\nWantedBy=multi-user.target\n' > /etc/systemd/system/canvera-first-boot.service
 systemctl enable canvera-first-boot.service
 
 # ─── Set up dark mode scheduler ──────────────────────────────────────────────
