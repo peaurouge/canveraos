@@ -144,15 +144,14 @@ apt-get install -y \
     exfatprogs \
     exfat-fuse \
     dosfstools \
-    fuse \
     fuse3 \
-    libfuse-dev \
     udisks2 \
-    udiskie \
     gvfs \
     gvfs-backends \
-    gvfs-fuse
-
+    gvfs-fuse \
+    unzip
+# Optional filesystem tools
+apt-get install -y udiskie 2>/dev/null || true
 # APFS (read-only via apfs-fuse — optional, non-fatal)
 apt-get install -y apfs-fuse 2>/dev/null || {
     warn "apfs-fuse not in repos — skipping APFS support (optional feature)."
