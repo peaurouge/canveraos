@@ -53,11 +53,16 @@ zenity --info \
     --ok-label="Let's Go" \
     2>/dev/null || true
 
-# ─── Dolphin — Finder-style sidebar (remove system disks) ─────────────────────
+# ─── Dolphin — Finder-style sidebar (remove system disks) ──────────────────────────
 log "Configuring Dolphin sidebar (macOS Finder style)..."
 mkdir -p "${HOME}/.config"
-cp /canvera-config/apps/dolphin/dolphinrc "${HOME}/.config/dolphinrc" 2>/dev/null || true
-bash /canvera-config/apps/dolphin/setup-places.sh 2>/dev/null || true
+# Use /etc/skel/.config/dolphinrc (permanent, installed during build)
+# Do NOT use /canvera-config/ — that directory is DELETED during ISO build cleanup
+if [[ -f /etc/skel/.config/dolphinrc ]]; then
+    cp /etc/skel/.config/dolphinrc "${HOME}/.config/dolphinrc"
+fi
+# Setup Dolphin places (hides system partitions, shows Finder-style locations)
+bash /usr/local/bin/canvera-setup-dolphin-places 2>/dev/null || true
 
 # ─── Apply wallpaper ──────────────────────────────────────────────────────────
 # Wallpapers are already at /usr/share/wallpapers/CanveraOS/ from the build.

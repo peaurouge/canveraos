@@ -162,6 +162,19 @@ apt-get install -y konqueror 2>/dev/null || warn "Konqueror install failed"
 
 ok "Dolphin installed."
 
+# Install Dolphin config to PERMANENT locations (survives build cleanup)
+# /canvera-config/ is deleted after build — these copies persist in the squashfs
+log "Installing Dolphin configuration to permanent locations..."
+mkdir -p /etc/skel/.config/
+# skel = applied to every new user's home directory automatically
+cp /canvera-config/apps/dolphin/dolphinrc /etc/skel/.config/dolphinrc 2>/dev/null || \
+    warn "dolphinrc not found at /canvera-config/apps/dolphin/"
+# Install places setup script to /usr/local/bin/ (permanent, on PATH)
+install -m 755 /canvera-config/apps/dolphin/setup-places.sh \
+    /usr/local/bin/canvera-setup-dolphin-places 2>/dev/null || \
+    warn "setup-places.sh not found"
+ok "Dolphin config installed to /etc/skel/ and /usr/local/bin/."
+
 # ─── Install network hardware support (ethernet firmware + drivers) ───────────
 log "Installing network hardware support (ethernet firmware + drivers)..."
 
@@ -308,6 +321,15 @@ printf 'export USERNAME=ubuntu\nexport USERFULLNAME="Live Session"\nexport HOST=
 printf 'ubuntu ALL=(ALL) NOPASSWD: ALL\ncanvera ALL=(ALL) NOPASSWD: ALL\n%%sudo ALL=(ALL) NOPASSWD: ALL\n' \
     > /etc/sudoers.d/90-canvera-live
 chmod 440 /etc/sudoers.d/90-canvera-live
+
+# Create system groups needed by Calamares users module and hardware access
+# groupadd -f = succeed silently if group already exists
+groupadd -f autologin   # needed by Calamares autologin feature
+groupadd -f plugdev     # needed for Loupedeck CT, USB devices
+groupadd -f netdev      # needed for NetworkManager user control
+groupadd -f bluetooth   # needed for BlueDevil
+groupadd -f lpadmin     # needed for CUPS printing
+groupadd -f scanner     # needed for SANE scanners
 ok "Live session configured."
 
 # ─── Apply KDE theme configuration ───────────────────────────────────────────

@@ -56,14 +56,9 @@ FSSIZE=$(du -sx --block-size=1 "${CHROOT_DIR}" | cut -f1)
 echo "${FSSIZE}" > "${ISO_DIR}/casper/filesystem.size"
 ok "SquashFS created ($(du -sh "${ISO_DIR}/casper/filesystem.squashfs" | cut -f1))."
 
-# ─── Copy Calamares installer config ─────────────────────────────────────────
-log "Copying Calamares installer configuration..."
-if [[ -d "${PROJECT_ROOT}/installer/calamares" ]]; then
-    cp -r "${PROJECT_ROOT}/installer/calamares" "${ISO_DIR}/calamares-config"
-    ok "Calamares config copied."
-else
-    warn "Calamares config not found at ${PROJECT_ROOT}/installer/calamares — skipping."
-fi
+# NOTE: Calamares config is already installed INSIDE the squashfs at /etc/calamares/
+# (done during chroot-setup.sh). Copying it here to the ISO root would be useless
+# because Calamares runs inside the squashfs and reads from /etc/calamares/ only.
 
 # ─── Set up GRUB bootloader ───────────────────────────────────────────────────
 log "Configuring GRUB bootloader (UEFI)..."
