@@ -201,7 +201,6 @@ jobs:
             > **Adobe CC** — click app icon → wizard → log in with Adobe ID.
           files: |
             CanveraOS-*.iso
-            CanveraOS-*.iso.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
