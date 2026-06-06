@@ -217,12 +217,24 @@ LayoutName=thumbnail_grid
 [Windows]
 FocusPolicy=ClickToFocus
 TitlebarDoubleClickCommand=Maximize
+# Alt+right-drag resizes window from ANYWHERE (not just the thin border edge)
+# This is how macOS resize works — no need to aim for exact corner
+CommandAllKey=Alt
+CommandWindow1=Move
+CommandWindow2=Toggle raise and lower
+CommandWindow3=Resize
+# Resize handle precision
+ElectricBorderCornerRatio=0.25
 
 [org.kde.kdecoration2]
 ButtonsOnLeft=XIA
 ButtonsOnRight=
 library=org.kde.klassy
 theme=CanveraOS
+# Tiny border = 1px resize handle on ALL 4 edges and ALL 4 corners.
+# Without this, BorderSize defaults to None and bottom/side corners have no resize target.
+BorderSize=Tiny
+BorderSizeAuto=false
 ' > "${SKEL}/.config/kwinrc"
 
 # ── Plasma panel layout: macOS Tahoe (top bar only, no bottom taskbar) ────────
