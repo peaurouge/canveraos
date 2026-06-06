@@ -1,0 +1,13 @@
+[Unit]
+Description=CanveraOS Dark Mode Scheduler Timer
+Requires=canvera-dark-mode.service
+
+[Timer]
+# Check every 5 minutes
+OnBootSec=30sec
+OnUnitActiveSec=5min
+Unit=canvera-dark-mode.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

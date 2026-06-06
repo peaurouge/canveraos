@@ -1,0 +1,113 @@
+name: "🔍 CanveraOS Build Diagnostics"
+
+# Run this FIRST to identify what's failing before the full build
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: "Diagnose Build Environment"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: "📥 Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: "📊 System info"
+        run: |
+          echo "=== OS ==="
+          lsb_release -a
+          echo ""
+          echo "=== Disk space ==="
+          df -h /
+          echo ""
+          echo "=== RAM ==="
+          free -h
+          echo ""
+          echo "=== CPU ==="
+          nproc && lscpu | grep "Model name"
+
+      - name: "🧹 Free disk space"
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /usr/local/share/dotnet
+          sudo rm -rf /opt/ghc /usr/local/.ghcup /usr/local/share/powershell /usr/share/swift
+          sudo rm -rf /opt/hostedtoolcache/CodeQL /opt/hostedtoolcache/node
+          sudo rm -rf /opt/hostedtoolcache/Ruby /opt/hostedtoolcache/PyPy /opt/hostedtoolcache/go
+          docker system prune -af --volumes 2>/dev/null || true
+          sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
+          echo "=== Disk after cleanup ==="
+          df -h /
+
+      - name: "🔧 Install build tools"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            debootstrap squashfs-tools xorriso grub-pc-bin \
+            grub-efi-amd64-bin mtools dosfstools wget curl
+          echo "debootstrap version: $(debootstrap --version)"
+          echo "xorriso version: $(xorriso --version 2>&1 | head -1)"
+          echo "✅ Tools installed."
+
+      - name: "🌐 Network connectivity test"
+        run: |
+          echo "=== Testing Ubuntu archive ==="
+          curl -sv --max-time 10 http://archive.ubuntu.com/ubuntu/ 2>&1 | head -20
+          echo ""
+          echo "=== DNS resolution ==="
+          nslookup archive.ubuntu.com || true
+
+      - name: "🧪 Test debootstrap (Noble) — THIS IS THE KEY TEST"
+        run: |
+          echo "Attempting minimal Ubuntu Noble debootstrap..."
+          echo "This downloads ~80 MB and takes ~3 minutes."
+          echo ""
+          sudo debootstrap \
+            --arch=amd64 \
+            --variant=minbase \
+            noble \
+            /tmp/noble-test \
+            http://archive.ubuntu.com/ubuntu/ \
+            && echo "✅ debootstrap SUCCESS — Noble base works!" \
+            || {
+              echo "❌ debootstrap FAILED — this is the root cause of exit code 1"
+              echo ""
+              echo "Last 30 lines of debootstrap log:"
+              cat /tmp/noble-test/debootstrap/debootstrap.log 2>/dev/null | tail -30 || true
+              exit 1
+            }
+
+      - name: "📋 Check project scripts"
+        run: |
+          echo "=== Checking build scripts exist ==="
+          for f in build/build-iso.sh build/chroot-setup.sh build/codecs-install.sh \
+                   build/apps-install.sh build/squashfs-pack.sh; do
+            if [[ -f "$f" ]]; then
+              echo "  ✅ $f ($(wc -l < $f) lines)"
+            else
+              echo "  ❌ MISSING: $f"
+            fi
+          done
+
+          echo ""
+          echo "=== Checking scripts are valid bash ==="
+          for f in build/*.sh scripts/*.sh; do
+            bash -n "$f" && echo "  ✅ $f — syntax OK" || echo "  ❌ $f — SYNTAX ERROR"
+          done
+
+      - name: "✅ Summary"
+        run: |
+          echo "=========================================="
+          echo "Diagnostics complete."
+          echo "If all steps above are green, the full"
+          echo "build-iso.sh should run successfully."
+          echo "=========================================="
+          df -h /

@@ -1,0 +1,34 @@
+# CanveraOS Look and Feel — Default Settings
+# Applied by: plasma-apply-lookandfeel -a org.canveraos.canveraos
+# This file tells KDE what to activate when the CanveraOS theme is selected.
+
+[kdeglobals]
+ColorScheme=CanveraOSDark
+Name=CanveraOS Dark
+widgetStyle=kvantum-dark
+SingleClick=false
+AnimationDurationFactor=0.5
+font=Inter,13,-1,5,400,0,0,0,0,0
+fixed=JetBrains Mono,10,-1,5,400,0,0,0,0,0
+menuFont=Inter,13,-1,5,400,0,0,0,0,0
+smallestReadableFont=Inter,11,-1,5,400,0,0,0,0,0
+toolBarFont=Inter,12,-1,5,400,0,0,0,0,0
+
+[Icons]
+Theme=CanveraOS
+
+[kwin]
+org.kde.kdecoration2.ButtonsOnLeft=XIA
+org.kde.kdecoration2.ButtonsOnRight=
+org.kde.kdecoration2.library=org.kde.klassy
+org.kde.kdecoration2.theme=CanveraOS
+
+[Wallpaper]
+Image=/usr/share/wallpapers/CanveraOS/canvera-dark.png
+FillMode=2
+
+[plasmarc]
+Theme=CanveraOS
+
+[ksplashrc]
+Theme=org.canveraos.canveraos

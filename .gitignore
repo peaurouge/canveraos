@@ -1,0 +1,34 @@
+# CanveraOS — Git Ignore Rules
+
+# macOS system files (never commit these)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build output — too large for git (built by GitHub Actions instead)
+build-workspace/
+*.iso
+*.iso.sha256
+*.iso.md5
+*.squashfs
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+/tmp/
+
+# CrossOver internal files (created at runtime, not build time)
+*.cxbottle
+*.bottle/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

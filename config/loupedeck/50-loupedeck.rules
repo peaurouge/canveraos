@@ -1,0 +1,33 @@
+# CanveraOS — Loupedeck Device udev Rules
+# Allows non-root access to all Loupedeck devices via the 'plugdev' group.
+# Place at: /etc/udev/rules.d/50-loupedeck.rules
+#
+# Loupedeck USB Vendor ID: 0x2EC2
+# Device IDs:
+#   CT:     2EC2:0004
+#   Live:   2EC2:0003
+#   Live S: 2EC2:0007
+#   Live + (original): 2EC2:0002
+#   Razer Loupedeck: 2EC2:0006
+
+# HID raw access (required for the Loupedeck software and community tools)
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2ec2", ATTRS{idProduct}=="0004", \
+    MODE="0666", GROUP="plugdev", SYMLINK+="loupedeck-ct"
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2ec2", ATTRS{idProduct}=="0003", \
+    MODE="0666", GROUP="plugdev", SYMLINK+="loupedeck-live"
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2ec2", ATTRS{idProduct}=="0007", \
+    MODE="0666", GROUP="plugdev", SYMLINK+="loupedeck-live-s"
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2ec2", ATTRS{idProduct}=="0002", \
+    MODE="0666", GROUP="plugdev", SYMLINK+="loupedeck-plus"
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2ec2", ATTRS{idProduct}=="0006", \
+    MODE="0666", GROUP="plugdev", SYMLINK+="loupedeck-razer"
+
+# USB device fallback (matches all Loupedeck USB devices)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="2ec2", MODE="0666", GROUP="plugdev"
+
+# Apply rules without reboot
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="2ec2", RUN+="/bin/sh -c 'udevadm trigger'"

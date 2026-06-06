@@ -1,0 +1,156 @@
+# CanveraOS Light — KDE Plasma Color Scheme
+# True macOS Tahoe Light palette
+# System Settings → Appearance → Colors → "CanveraOS Light"
+# Install: /usr/share/color-schemes/CanveraOS.colors
+
+[ColorEffects:Disabled]
+Color=198,198,200
+ColorAmount=0
+ColorEffect=0
+ContrastAmount=0.65
+ContrastEffect=1
+IntensityAmount=0.1
+IntensityEffect=2
+
+[ColorEffects:Inactive]
+ChangeSelectionColor=true
+Color=142,142,147
+ColorAmount=0.025
+ColorEffect=2
+ContrastAmount=0.1
+ContrastEffect=2
+Enable=false
+IntensityAmount=0
+IntensityEffect=0
+
+# ── Buttons / Controls ──────────────────────────────────────
+# Background: iOS light button fill (#E5E5EA)
+[Colors:Button]
+BackgroundAlternate=209,209,214
+BackgroundNormal=229,229,234
+DecorationFocus=0,122,255
+DecorationHover=0,100,210
+ForegroundActive=0,122,255
+ForegroundInactive=142,142,147
+ForegroundLink=0,122,255
+ForegroundNegative=255,59,48
+ForegroundNeutral=255,149,0
+ForegroundNormal=0,0,0
+ForegroundPositive=52,199,89
+ForegroundVisited=175,82,222
+
+# ── Complementary (sidebar, panel backgrounds) ──────────────
+# Background: slightly gray (#EBEBF0)
+[Colors:Complementary]
+BackgroundAlternate=235,235,240
+BackgroundNormal=242,242,247
+DecorationFocus=0,122,255
+DecorationHover=0,100,210
+ForegroundActive=0,122,255
+ForegroundInactive=142,142,147
+ForegroundLink=0,122,255
+ForegroundNegative=255,59,48
+ForegroundNeutral=255,149,0
+ForegroundNormal=0,0,0
+ForegroundPositive=52,199,89
+ForegroundVisited=175,82,222
+
+# ── Header / Toolbar / Menu Bar ─────────────────────────────
+# Background: macOS light menu bar (#F6F6F6)
+[Colors:Header]
+BackgroundAlternate=236,236,241
+BackgroundNormal=246,246,246
+DecorationFocus=0,122,255
+DecorationHover=0,100,210
+ForegroundActive=0,122,255
+ForegroundInactive=142,142,147
+ForegroundLink=0,122,255
+ForegroundNegative=255,59,48
+ForegroundNeutral=255,149,0
+ForegroundNormal=0,0,0
+ForegroundPositive=52,199,89
+ForegroundVisited=175,82,222
+
+# ── Selection (highlight) ───────────────────────────────────
+# iOS light accent blue (#007AFF)
+[Colors:Selection]
+BackgroundAlternate=0,90,200
+BackgroundNormal=0,122,255
+DecorationFocus=0,122,255
+DecorationHover=0,100,210
+ForegroundActive=255,255,255
+ForegroundInactive=230,240,255
+ForegroundLink=200,220,255
+ForegroundNegative=255,59,48
+ForegroundNeutral=255,149,0
+ForegroundNormal=255,255,255
+ForegroundPositive=52,199,89
+ForegroundVisited=220,190,255
+
+# ── Tooltips ────────────────────────────────────────────────
+# Dark tooltip on light background (macOS style)
+[Colors:Tooltip]
+BackgroundAlternate=60,60,65
+BackgroundNormal=44,44,46
+DecorationFocus=0,122,255
+DecorationHover=0,100,210
+ForegroundActive=100,180,255
+ForegroundInactive=180,180,190
+ForegroundLink=100,180,255
+ForegroundNegative=255,100,90
+ForegroundNeutral=255,180,80
+ForegroundNormal=255,255,255
+ForegroundPositive=100,220,130
+ForegroundVisited=210,150,255
+
+# ── View / Content areas ────────────────────────────────────
+# Background: pure white (#FFFFFF)
+[Colors:View]
+BackgroundAlternate=242,242,247
+BackgroundNormal=255,255,255
+DecorationFocus=0,122,255
+DecorationHover=0,100,210
+ForegroundActive=0,122,255
+ForegroundInactive=142,142,147
+ForegroundLink=0,122,255
+ForegroundNegative=255,59,48
+ForegroundNeutral=255,149,0
+ForegroundNormal=0,0,0
+ForegroundPositive=52,199,89
+ForegroundVisited=175,82,222
+
+# ── Window / Application background ─────────────────────────
+# Background: macOS light background (#F2F2F7)
+[Colors:Window]
+BackgroundAlternate=232,232,237
+BackgroundNormal=242,242,247
+DecorationFocus=0,122,255
+DecorationHover=0,100,210
+ForegroundActive=0,122,255
+ForegroundInactive=142,142,147
+ForegroundLink=0,122,255
+ForegroundNegative=255,59,48
+ForegroundNeutral=255,149,0
+ForegroundNormal=0,0,0
+ForegroundPositive=52,199,89
+ForegroundVisited=175,82,222
+
+[General]
+ColorScheme=CanveraOS
+Name=CanveraOS Light
+shadeSortColumn=true
+
+[KDE]
+contrast=4
+
+# ── Window Manager (title bars) ─────────────────────────────
+# Active: white title bar, Inactive: light gray
+[WM]
+activeBackground=246,246,246
+activeBlend=246,246,246
+activeForeground=0,0,0
+activeFrame=198,198,200
+inactiveBackground=242,242,247
+inactiveBlend=242,242,247
+inactiveForeground=142,142,147
+inactiveFrame=216,216,220

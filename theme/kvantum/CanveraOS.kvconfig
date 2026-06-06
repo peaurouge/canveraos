@@ -1,0 +1,102 @@
+# CanveraOS — Kvantum Theme Configuration
+# macOS Tahoe-style frosted glass UI for KDE widgets, menus, panels.
+# True macOS Tahoe dark palette (#1C1C1E, #2C2C2E, #0A84FF)
+# Place in /usr/share/Kvantum/CanveraOS/CanveraOS.kvconfig
+
+[%General]
+author=CanveraOS Team
+comment=Frosted glass theme inspired by macOS Tahoe — true Apple design palette
+x11drag=all
+alt_mnemonic=true
+left_tabs=false
+attach_active_tab=true
+mirror_doc_tabs=true
+group_toolbar_buttons=false
+toolbar_interior_spacing=2
+spread_progressbar=true
+progressbar_animation=true
+menuitem_separator_height=2
+transient_scrollbar=true
+transient_groove=true
+scroll_width=8
+scroll_arrows=false
+scroll_min_extent=36
+center_toolbar_handle=false
+check_interior=true
+composite=true
+tooltip_delay=-1
+
+# Frosted glass (blur + transparency)
+translucent_windows=true
+blurring=true
+popup_blurring=true
+reduce_window_opacity=15
+reduce_menu_opacity=10
+
+# Rounded corners — macOS Tahoe style
+frame_corner=10
+button_corner=8
+menu_corner=12
+scrollbar_corner=5
+tooltip_corner=8
+
+# Thin macOS-style scrollbar
+scroll_width=8
+
+[GeneralColors]
+# macOS Tahoe Dark palette
+# Window bg: #1C1C1E
+window.color=#1c1c1e
+# View bg: #2C2C2E  
+base.color=#2c2c2e
+# Alternate view: slightly lighter
+alt.base.color=#3a3a3c
+# Button bg: #3A3A3C
+button.color=#3a3a3c
+# Lighter variation
+light.color=#48484a
+mid.light.color=#44444a
+# Mid variation
+mid.color=#36363a
+# Dark variation
+dark.color=#28282c
+# Shadow
+shadow.color=#000000
+# Accent: iOS dark blue #0A84FF
+highlight.color=#0a84ff
+inactive.highlight.color=#0060cc
+# Selection text
+highlighted.text.color=#ffffff
+# Active text (links, focused)
+active.text.color=#0a84ff
+# Inactive/disabled text: #8E8E93
+inactive.text.color=#8e8e93
+disabled.text.color=#636366
+# Primary text: #FFFFFF
+text.color=#ffffff
+window.text.color=#ffffff
+button.text.color=#ffffff
+# Tooltip: dark bg, white text
+tooltip.base.color=#3a3a3c
+tooltip.text.color=#ffffff
+# Links
+link.color=#0a84ff
+link.visited.color=#bf5af2
+
+[Hacks]
+transparent_ktitle_label=true
+transparent_dolphin_view=true
+transparent_pcmanfm_sidepane=false
+transparent_pcmanfm_view=true
+lxqtmainmenu_iconsize=24
+no_selection_tint=false
+tint_on_mouseover=true
+opaque_colors=false
+respect_darkness=true
+force_size_grip=true
+iconless_pushbutton=false
+iconless_menu=false
+disabled_icon_opacity=50
+normal_default_pushbutton=true
+single_top_toolbar=false
+no_inactiveness=true

@@ -1,0 +1,17 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "hello@canveraos.io",
+                "Name": "CanveraOS Team"
+            }
+        ],
+        "Description": "macOS Tahoe-inspired theme for creative professionals. Pure GUI, zero terminal.",
+        "Id": "org.canveraos.canveraos",
+        "License": "GPL-2.0+",
+        "Name": "CanveraOS",
+        "Version": "1.0.0",
+        "Website": "https://canveraos.io"
+    },
+    "KPackageStructure": "Plasma/LookAndFeel"
+}

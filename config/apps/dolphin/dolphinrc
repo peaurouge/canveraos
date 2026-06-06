@@ -1,0 +1,80 @@
+# CanveraOS — Dolphin File Manager Configuration
+# Pre-configured to behave like macOS Finder.
+# Place at: ~/.config/dolphinrc
+#
+# NOTE: Dolphin does not have a native Column View (Miller columns).
+# To compensate, the Folders panel is enabled by default (F7 to toggle)
+# which provides hierarchical column-like navigation on the left side.
+
+[General]
+BrowseThroughArchives=false
+ConfirmClosingMultipleTabs=true
+EditableUrl=false
+HomeUrl=file:///home
+OpenNewTabAfterLastTab=true
+RememberOpenedTabs=true
+ShowFullPath=true
+ShowFullPathInTitlebar=true
+ShowStatusBar=true
+ShowToolbar=true
+ShowZoomSlider=true
+SortingChoice=SortByName
+UseTabForSwitchingSplitView=false
+Version=202
+ViewPropsTimestamp=2024,1,1,0,0,0
+
+[DetailsMode]
+DateWidth=120
+GroupWidth=100
+NameWidth=260
+PermissionsWidth=0
+RatingWidth=0
+SizeWidth=80
+TagsWidth=0
+TypeWidth=120
+
+[IconsMode]
+IconSize=48
+PreviewSize=96
+
+[KFileDialog Settings]
+Allow Expansion=false
+Automatically select filename extension=true
+
+[MainWindow]
+MenuBar=Disabled
+ToolBarsMovable=Disabled
+
+[PreviewSettings]
+Plugins=appimagethumbnail,audiothumbnail,blenderthumbnail,comicbookthumbnail,cursorthumbnail,djvuthumbnail,ebookthumbnail,exrthumbnail,directorythumbnail,fontthumbnail,imagethumbnail,jpegthumbnail,kraorathumbnail,windowsexethumbnail,windowsimagethumbnail,mobithumbnail,opendocumentthumbnail,pdf,ffmpegthumbs,svgthumbnail,textthumbnail,krita,xcfthumbnail
+
+[PlacesPanel]
+IconSize=22
+TagsVisible=true
+
+[Search]
+Location=Everywhere
+SearchFor=FileAndFolders
+
+[SettingsDialog]
+Width=640
+Height=480
+
+[ViewModes]
+# Icon view (0) by default, like macOS Finder
+# Use F3 for split view, F7 for Folders panel (column-like navigation)
+ViewMode=0
+
+# ─── Folders Panel (replaces Column View — shows folder tree on left) ──────────
+# Enabled by default as the closest equivalent to macOS Column View.
+# Press F7 to toggle it, or use View → Panels → Folders
+[FoldersPanel]
+Width=220
+
+[Sidebar]
+Visible=true
+Width=220
+
+# Panels (Folders panel enabled = column-like navigation)
+[ContentDisplay]
+IconSize=22

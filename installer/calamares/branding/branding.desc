@@ -1,0 +1,58 @@
+---
+# CanveraOS — Calamares Branding Configuration
+# Controls the look and feel of the installer wizard.
+
+componentName: canvera
+
+# ─── Product information ──────────────────────────────────────────────────────
+strings:
+    productName:         "CanveraOS"
+    version:             "1.0.0"
+    shortVersion:        "1.0"
+    versionedName:       "CanveraOS 1.0"
+    shortProductName:    "CanveraOS"
+    bootloaderEntryName: "CanveraOS"
+    productUrl:          "https://canveraos.io"
+    supportUrl:          "https://canveraos.io/support"
+    knownIssuesUrl:      "https://canveraos.io/known-issues"
+    releaseNotesUrl:     "https://canveraos.io/release-notes"
+
+# ─── Images ───────────────────────────────────────────────────────────────────
+images:
+    productLogo:         "canvera-logo.png"     # 128×128 PNG
+    productIcon:         "canvera-logo.png"
+    productWelcome:      "canvera-welcome.png"  # Wide banner image
+
+# ─── Installer slideshow ─────────────────────────────────────────────────────
+# QML slideshow shown while files are being copied
+slideshow:               "show.qml"
+slideshowAPI:            2
+
+# ─── Style ────────────────────────────────────────────────────────────────────
+style:
+    # Primary colors (macOS Tahoe-inspired)
+    sidebarBackground:   "#1a1a2e"
+    sidebarText:         "#e8e8f0"
+    sidebarTextSelect:   "#ffffff"
+    sidebarTextHighlight: "#4f8ef7"
+    
+    # Main content area
+    windowBackground:    "#f5f5f7"
+    windowText:          "#1d1d1f"
+    
+    # Buttons
+    buttonBackground:    "#4f8ef7"
+    buttonText:          "#ffffff"
+    
+    # Progress bar
+    progressColor:       "#4f8ef7"
+    progressBackground:  "#e5e5ea"
+    
+    # Fonts
+    fontFamily:          "Inter"
+    fontSize:            13
+
+# ─── Window settings ──────────────────────────────────────────────────────────
+windowExpanding:         normal
+windowSize:              [ 900, 600 ]
+windowPlacement:         center

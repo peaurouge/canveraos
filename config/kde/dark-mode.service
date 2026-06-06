@@ -1,0 +1,10 @@
+[Unit]
+Description=CanveraOS Automatic Dark/Light Mode Scheduler
+Documentation=man:canvera-dark-mode(1)
+After=graphical-session.target plasma-plasmashell.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/canvera-dark-mode auto
+StandardOutput=journal
+StandardError=journal

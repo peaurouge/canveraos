@@ -1,0 +1,121 @@
+# CanveraOS — KWin Window Rules
+# Per-application window size and position memory.
+# Each rule remembers exact geometry when user manually resizes/moves.
+# Place at: ~/.config/kwinrules
+
+[1]
+Description=Window Memory — Remember size and position for all apps
+clientmachine=localhost
+clientmachineenabled=false
+clientmachinematch=0
+desktop=0
+desktopenabled=false
+fsplevel=0
+fsplevelenabled=false
+ignoregeometry=false
+ignoregeometryenabled=false
+maximizehoriz=false
+maximizehorizrule=0
+maximizevert=false
+maximizevertrule=0
+minimized=false
+minimizedrule=0
+noborder=false
+noborderenabled=false
+position=0,0
+positionenabled=false
+screen=0
+screenenabled=false
+size=800,600
+sizeenabled=false
+title=
+titlematch=0
+type=0
+typeenabled=false
+types=33554431
+wmclass=
+wmclasscomplete=false
+wmclassmatch=0
+
+[2]
+Description=Dolphin File Manager — Remember geometry
+wmclass=dolphin
+wmclasscomplete=false
+wmclassmatch=1
+position=0,0
+positionenabled=true
+size=1200,750
+sizeenabled=true
+desktop=0
+desktopenabled=false
+screen=0
+screenenabled=false
+
+[3]
+Description=DaVinci Resolve — Full screen on primary monitor
+wmclass=resolve
+wmclasscomplete=false
+wmclassmatch=1
+position=0,0
+positionenabled=false
+maximizehoriz=true
+maximizehorizrule=2
+maximizevert=true
+maximizevertrule=2
+screen=0
+screenenabled=true
+
+[4]
+Description=Photoshop (CrossOver) — Remember geometry
+wmclass=photoshop.exe
+wmclasscomplete=false
+wmclassmatch=1
+screen=0
+screenenabled=true
+
+[5]
+Description=Premiere Pro (CrossOver) — Full screen
+wmclass=premiere pro.exe
+wmclasscomplete=false
+wmclassmatch=1
+maximizehoriz=true
+maximizehorizrule=2
+maximizevert=true
+maximizevertrule=2
+
+[6]
+Description=SDDM Greeter — Always full screen
+wmclass=sddm-greeter
+wmclasscomplete=false
+wmclassmatch=1
+fullscreen=true
+fullscreenrule=2
+above=true
+aboverule=2
+skiptaskbar=true
+skiptaskbarrule=2
+
+[7]
+Description=Calamares Installer — Always centered and large
+wmclass=calamares
+wmclasscomplete=false
+wmclassmatch=1
+position=center
+positionenabled=false
+size=900,600
+sizeenabled=true
+above=true
+aboverule=2
+skiptaskbar=false
+
+[8]
+Description=KRunner Command Palette — Always on top, centered
+wmclass=krunner
+wmclasscomplete=false
+wmclassmatch=1
+above=true
+aboverule=2
+skiptaskbar=true
+skiptaskbarrule=2
+skippager=true
+skippagerrule=2
