@@ -150,8 +150,10 @@ apt-get install -y \
     gvfs-backends \
     gvfs-fuse \
     unzip
+
 # Optional filesystem tools
 apt-get install -y udiskie 2>/dev/null || true
+
 # APFS (read-only via apfs-fuse — optional, non-fatal)
 apt-get install -y apfs-fuse 2>/dev/null || {
     warn "apfs-fuse not in repos — skipping APFS support (optional feature)."
@@ -180,7 +182,7 @@ ok "Fonts installed."
 log "Configuring SDDM..."
 systemctl enable sddm
 mkdir -p /etc/sddm.conf.d
-printf '[Theme]\nCurrent=breeze\n\n[General]\nDisplayServer=wayland\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n\n[Autologin]\nRelogin=false\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' > /etc/sddm.conf.d/canvera.conf
+printf '[Theme]\nCurrent=breeze\n\n[General]\nDisplayServer=x11\n\n[Autologin]\nRelogin=false\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' > /etc/sddm.conf.d/canvera.conf
 ok "SDDM configured."
 
 # ─── Apply KDE theme configuration ───────────────────────────────────────────
