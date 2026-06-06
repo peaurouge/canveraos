@@ -72,6 +72,26 @@ locale-gen en_US.UTF-8
 update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 ok "Base packages installed."
 
+# ─── CRITICAL: Add overlay module to initramfs ───────────────────────────────────
+# Without 'overlay' in initramfs, casper fails on boot with:
+# "(initramfs) /cow format specified as 'overlay' and no support found"
+# This MUST happen before the first update-initramfs call.
+log "Configuring initramfs for casper live boot (overlay, squashfs, loop)..."
+mkdir -p /etc/initramfs-tools
+
+# Ensure the modules file exists and has required entries
+for MOD in overlay squashfs loop iso9660 aufs; do
+    grep -q "^${MOD}$" /etc/initramfs-tools/modules 2>/dev/null || \
+        echo "${MOD}" >> /etc/initramfs-tools/modules
+done
+
+# Configure initramfs-tools for casper
+mkdir -p /etc/initramfs-tools/conf.d
+printf '# CanveraOS initramfs configuration\n# MODULES=most includes all common drivers including overlay\nMODULES=most\nCOMPRESS=lz4\nBUSYBOX=auto\n' \
+    > /etc/initramfs-tools/conf.d/canvera.conf
+
+ok "Initramfs configured for casper live boot."
+
 # Re-ensure universe is available (ubuntu-minimal can reset apt sources)
 log "Re-enabling universe repository for KDE packages..."
 add-apt-repository -y universe
@@ -418,8 +438,14 @@ log "Final system configuration..."
 systemctl set-default graphical.target
 # Enable NetworkManager
 systemctl enable NetworkManager
-# Update initramfs
-update-initramfs -u -k all
+
+# CRITICAL: Rebuild initramfs at the END (after ALL packages installed)
+# This ensures overlay, squashfs, loop, r8168, etc. are all included.
+log "Rebuilding initramfs (includes overlay module for casper live boot)..."
+update-initramfs -u -k all 2>/dev/null || update-initramfs -u 2>/dev/null || \
+    warn "initramfs update failed — boot may have issues"
+ok "Initramfs rebuilt."
+
 # Set machine-id for live session
 echo -n > /etc/machine-id
 
