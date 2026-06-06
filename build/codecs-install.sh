@@ -35,9 +35,12 @@ apt-get install -y \
     gstreamer1.0-vaapi \
     gstreamer1.0-gl \
     gstreamer1.0-alsa \
-    gstreamer1.0-pulseaudio \
     gstreamer1.0-x \
     gstreamer1.0-tools
+# gstreamer1.0-pulseaudio conflicts with pipewire — install optionally after PipeWire
+apt-get install -y gstreamer1.0-pipewire 2>/dev/null || \
+    apt-get install -y gstreamer1.0-pulseaudio 2>/dev/null || \
+    warn "gstreamer PipeWire/PulseAudio plugin not found — audio in GStreamer apps may be limited."
 
 ok "Core codecs installed."
 
@@ -63,6 +66,12 @@ ok "Video codecs installed."
 
 # ─── Audio codecs ─────────────────────────────────────────────────────────────
 log "Installing audio codecs (AAC, MP3, FLAC, OGG, ALAC, AIFF, AC3, DTS, Opus)..."
+# Ubuntu 24.04: PipeWire replaces PulseAudio — remove pulseaudio first to prevent conflicts
+log "Removing PulseAudio (replaced by PipeWire in Ubuntu 24.04)..."
+apt-get remove -y pulseaudio pulseaudio-module-bluetooth pulseaudio-utils \
+    pulseaudio-module-gsettings 2>/dev/null || true
+apt-get autoremove -y 2>/dev/null || true
+
 # ALAC (Apple Lossless) is supported via FFmpeg's libavcodec-extra — no separate package needed
 apt-get install -y \
     libmp3lame-dev \
@@ -75,7 +84,6 @@ apt-get install -y \
     sox \
     libsox-fmt-all \
     alsa-utils \
-    pulseaudio \
     pipewire \
     pipewire-audio \
     pipewire-alsa \
