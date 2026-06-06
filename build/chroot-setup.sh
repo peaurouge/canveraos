@@ -309,7 +309,7 @@ ok "casper-md5check masked."
 
 ok "First-boot autostart configured."
 
-# ─── Set up dark mode scheduler ──────────────────────────────────────────────
+# ─── Set up dark mode scheduler ─────────────────────────────────────────────────────
 log "Setting up dark mode scheduler..."
 cp /canvera-scripts/dark-mode-scheduler.sh /usr/local/bin/canvera-dark-mode
 chmod +x /usr/local/bin/canvera-dark-mode
@@ -317,6 +317,19 @@ cp /canvera-config/kde/dark-mode.service /etc/systemd/user/canvera-dark-mode.ser
 cp /canvera-config/kde/dark-mode.timer   /etc/systemd/user/canvera-dark-mode.timer
 systemctl --global enable canvera-dark-mode.timer
 ok "Dark mode scheduler configured."
+
+# ─── Install multi-monitor setup script ─────────────────────────────────────────────
+log "Installing multi-monitor support..."
+cp /canvera-scripts/multimonitor-setup.sh /usr/local/bin/canvera-multimonitor
+chmod +x /usr/local/bin/canvera-multimonitor
+ok "Multi-monitor setup installed."
+
+# ─── Install X11 display config (unlock all refresh rates from EDID) ─────────────
+log "Installing X11 display config (unlock 120Hz/144Hz/160Hz)..."
+mkdir -p /etc/X11/xorg.conf.d
+cp /canvera-config/X11/99-canvera-display.conf /etc/X11/xorg.conf.d/ 2>/dev/null || \
+    warn "X11 display config not found at /canvera-config/X11/"
+ok "X11 display config installed."
 
 # ─── Security setup ───────────────────────────────────────────────────────────
 log "Configuring security (UFW, AppArmor)..."

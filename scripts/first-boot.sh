@@ -130,6 +130,19 @@ log "Starting file indexer for instant search..."
 balooctl enable
 balooctl start
 
+# ─── Multi-monitor setup (panel + dock + refresh rate on all monitors) ─────────────
+log "Configuring multi-monitor panel, dock, and refresh rates..."
+if [[ -f /usr/local/bin/canvera-multimonitor ]]; then
+    # Run in background — it waits for KDE to load before adding panels
+    bash /usr/local/bin/canvera-multimonitor &
+fi
+
+# Create persistent autostart so multi-monitor is reconfigured on every login
+# (e.g. when user connects/disconnects a monitor later)
+mkdir -p "${HOME}/.config/autostart"
+printf '[Desktop Entry]\nName=CanveraOS Multi-Monitor\nComment=Configure panels and dock on all connected monitors\nExec=/usr/local/bin/canvera-multimonitor\nTerminal=false\nType=Application\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Delay=15\n' \
+    > "${HOME}/.config/autostart/canvera-multimonitor.desktop"
+
 # ─── Loupedeck CT — add user to plugdev group ─────────────────────────────────
 log "Configuring Loupedeck CT device permissions..."
 # Loupedeck CT requires plugdev group membership for USB HID access
