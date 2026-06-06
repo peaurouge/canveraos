@@ -304,9 +304,21 @@ ok "Fonts installed."
 log "Configuring SDDM..."
 systemctl enable sddm
 mkdir -p /etc/sddm.conf.d
-# Live session: autologin as ubuntu (casper user) so Calamares autostart fires immediately
-printf '[Theme]\nCurrent=breeze\n\n[General]\nDisplayServer=x11\nGreeterEnvironment=QT_SCREEN_SCALE_FACTORS=1\n\n[Autologin]\nUser=ubuntu\nSession=plasma\nRelogin=false\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' \
-    > /etc/sddm.conf.d/canvera.conf
+# Configure SDDM login manager — TWO files:
+# 1. 10-canvera-display.conf — PERMANENT (survives Calamares installation)
+# 2. 90-canvera-live-autologin.conf — LIVE SESSION ONLY (removed by canvera_postinstall)
+
+# Permanent SDDM settings (theme, display server, user range)
+mkdir -p /etc/sddm.conf.d
+printf '[General]\nDisplayServer=x11\nHaltCommand=/usr/bin/systemctl poweroff\nRebootCommand=/usr/bin/systemctl reboot\nNumlock=on\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' \
+    > /etc/sddm.conf.d/10-canvera-display.conf
+
+# LIVE SESSION ONLY autologin — canvera_postinstall shellprocess REMOVES this file
+# after Calamares completes. Without removal, installed system tries to autologin
+# as 'ubuntu' (which doesn't exist on installed system) causing an infinite login loop.
+printf '[Autologin]\nUser=ubuntu\nSession=plasma\nRelogin=false\n' \
+    > /etc/sddm.conf.d/90-canvera-live-autologin.conf
+
 ok "SDDM configured."
 
 # ─── Configure casper live session ────────────────────────────────────────────────

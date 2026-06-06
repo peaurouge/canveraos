@@ -85,6 +85,29 @@ git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git \
 # Papirus as secondary fallback (also macOS-style, available in repos)
 apt-get install -y papirus-icon-theme 2>/dev/null || true
 
+# ─── 6b. Install WhiteSur GTK theme (macOS Tahoe style for Firefox, GTK apps) ─────────
+log "Installing WhiteSur GTK theme (macOS-style GTK3/4 theme)..."
+git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git \
+    /tmp/whitesur-gtk 2>/dev/null && {
+    cd /tmp/whitesur-gtk
+    # Install Dark variant, solid opacity (for glassmorphism compatibility)
+    bash install.sh -t dark  --opacity solid 2>/dev/null || true
+    bash install.sh -t light --opacity solid 2>/dev/null || true
+    # Also install for root (sudo apps)
+    bash install.sh -t dark  --opacity solid -d /root/.local/share/themes 2>/dev/null || true
+    # Install Firefox theme (makes Firefox look macOS native)
+    bash tweaks.sh -f 2>/dev/null || true
+    cd / && rm -rf /tmp/whitesur-gtk
+    ok "WhiteSur GTK theme installed (GTK apps now look macOS-native)."
+} || {
+    warn "WhiteSur GTK theme download failed — GTK apps will use Breeze theme."
+    # Update GTK configs to use Breeze as fallback (always available on KDE)
+    sed -i 's/WhiteSur-Dark/Breeze-Dark/g; s/WhiteSur-Light/Breeze/g' \
+        "${SKEL}/.config/gtk-3.0/settings.ini" \
+        "${SKEL}/.config/gtk-4.0/settings.ini" \
+        "${SKEL}/.config/gtk-2.0/gtkrc" 2>/dev/null || true
+}
+
 # ─── 7. Install WhiteSur Plasma shell + rename to CanveraOS ───────────────────
 log "Installing WhiteSur Plasma shell theme + renaming to CanveraOS..."
 git clone --depth=1 https://github.com/vinceliuice/WhiteSur-kde.git \

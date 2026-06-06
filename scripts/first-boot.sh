@@ -133,11 +133,11 @@ log "Starting CopyQ clipboard manager..."
 mkdir -p "${HOME}/.config/autostart"
 printf '[Desktop Entry]\nName=CopyQ Clipboard Manager\nExec=copyq\nIcon=copyq\nTerminal=false\nType=Application\nX-KDE-autostart-after=panel\n' \
     > "${HOME}/.config/autostart/copyq.desktop"
-copyq & 2>/dev/null || true
+copyq 2>/dev/null &
 
 # ─── Start Plank Dock ─────────────────────────────────────────────────────────
 log "Starting Plank dock..."
-plank & 2>/dev/null || true
+plank 2>/dev/null &
 sleep 2
 
 # ─── Configure dark mode scheduler as user service ────────────────────────────
@@ -153,13 +153,27 @@ balooctl_cmd start
 # ─── Multi-monitor setup ──────────────────────────────────────────────────────
 log "Configuring multi-monitor panel, dock, and refresh rates..."
 if [[ -f /usr/local/bin/canvera-multimonitor ]]; then
-    bash /usr/local/bin/canvera-multimonitor &
+    bash /usr/local/bin/canvera-multimonitor 2>/dev/null &
 fi
 
 # Autostart for future logins
 mkdir -p "${HOME}/.config/autostart"
 printf '[Desktop Entry]\nName=CanveraOS Multi-Monitor\nComment=Configure panels and dock on all connected monitors\nExec=/usr/local/bin/canvera-multimonitor\nTerminal=false\nType=Application\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Delay=15\n' \
     > "${HOME}/.config/autostart/canvera-multimonitor.desktop"
+
+# ─── Set up Flathub (system-wide, done here since chroot couldn't) ────────────
+log "Setting up Flathub remote..."
+# System-wide Flathub (needs root / pkexec — skip silently if not available)
+sudo flatpak remote-add --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
+# User Flathub (always works without root)
+flatpak remote-add --user --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
+
+# ─── Install Flatpak apps (Telegram, WhatsApp, Organic Maps) ──────────────────
+# Run after 60 sec delay to ensure network is fully up
+log "Scheduling Flatpak apps installation (60 second delay for network)..."
+( sleep 60 && /usr/local/bin/canvera-install-flatpak-apps ) 2>/dev/null &
 
 # ─── Loupedeck CT — add user to plugdev group ─────────────────────────────────
 log "Configuring Loupedeck CT device permissions..."
