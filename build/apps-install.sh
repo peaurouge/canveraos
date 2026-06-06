@@ -54,39 +54,90 @@ wget -qO /usr/share/keyrings/microsoft.gpg \
     apt-get install -y code && \
     ok "VS Code installed." || warn "VS Code install failed — skipping."
 
+# ─── Runtime browser detector ─────────────────────────────────────────────────
+# CRITICAL: Browser detection must happen at RUNTIME, not at build time.
+# This script is used by all PWA launchers so they always find the right browser.
+log "Creating runtime browser detector..."
+printf '#!/usr/bin/env bash
+# CanveraOS PWA browser detector — finds best browser for PWA --app mode.
+# Used by all PWA launcher .desktop files. Runs at user click time.
+for BROWSER in chromium-browser chromium google-chrome-stable google-chrome firefox-esr firefox; do
+    command -v "${BROWSER}" &>/dev/null && echo "${BROWSER}" && exit 0
+done
+echo "firefox"
+' > /usr/local/bin/canvera-browser-detect
+chmod +x /usr/local/bin/canvera-browser-detect
+
+# Generic PWA launcher — takes URL and window class as arguments
+printf '#!/usr/bin/env bash
+# CanveraOS PWA Launcher
+# Usage: canvera-pwa <URL> <WindowClass> <AppName>
+URL="$1"
+CLASS="${2:-PWA}"
+APPNAME="${3:-Web App}"
+
+BROWSER=$(/usr/local/bin/canvera-browser-detect)
+
+# Check for internet connection first
+if ! ping -c1 -W3 8.8.8.8 &>/dev/null; then
+    zenity --error \
+        --title="${APPNAME}" \
+        --text="<b>No internet connection.</b>\n\nPlease connect to the internet and try again." \
+        --width=340 2>/dev/null || true
+    exit 1
+fi
+
+# Chromium/Chrome support --app= flag for true PWA mode (no browser chrome)
+if [[ "${BROWSER}" == "chromium"* ]] || [[ "${BROWSER}" == "google-chrome"* ]]; then
+    exec "${BROWSER}" --app="${URL}" --class="${CLASS}" 2>/dev/null
+else
+    # Firefox fallback — opens as regular tab
+    exec "${BROWSER}" "${URL}" 2>/dev/null
+fi
+' > /usr/local/bin/canvera-pwa
+chmod +x /usr/local/bin/canvera-pwa
+ok "Runtime browser detector created."
+
 # ─── DaVinci Resolve ──────────────────────────────────────────────────────────
 log "Setting up DaVinci Resolve installer..."
 mkdir -p /opt/canvera-apps/resolve
 
-printf '#!/usr/bin/env bash\n# DaVinci Resolve installer launcher\nzenity --info --title="Install DaVinci Resolve" --text="DaVinci Resolve requires a free Blackmagic Design account.\\n\\nClick OK to open the download page in your browser.\\nAfter downloading the .deb file, double-click it to install." --width=400 --height=200\nxdg-open "https://www.blackmagicdesign.com/products/davinciresolve" &\nzenity --info --title="Install DaVinci Resolve" --text="Once downloaded, locate the .deb file in your Downloads folder and double-click it to install." --width=400 --height=200\n' \
-    > /usr/local/bin/canvera-install-resolve
+printf '#!/usr/bin/env bash
+# DaVinci Resolve installer launcher
+if ! ping -c1 -W3 8.8.8.8 &>/dev/null; then
+    zenity --error --title="DaVinci Resolve" \
+        --text="<b>No internet connection.</b>\n\nPlease connect to the internet to download DaVinci Resolve." \
+        --width=380 2>/dev/null || true
+    exit 1
+fi
+zenity --info --title="Install DaVinci Resolve" \
+    --text="<b>DaVinci Resolve</b> requires a free Blackmagic Design account.\n\nClick OK to open the download page.\nAfter downloading the .deb file, double-click it to install." \
+    --width=420 --ok-label="Open Download Page" 2>/dev/null || true
+xdg-open "https://www.blackmagicdesign.com/products/davinciresolve" &
+' > /usr/local/bin/canvera-install-resolve
 chmod +x /usr/local/bin/canvera-install-resolve
 
 printf '[Desktop Entry]\nName=Install DaVinci Resolve\nComment=Download and install DaVinci Resolve video editor\nExec=/usr/local/bin/canvera-install-resolve\nIcon=video-editor\nTerminal=false\nType=Application\nCategories=AudioVideo;Video;\nStartupNotify=true\n' \
     > /usr/share/applications/canvera-install-resolve.desktop
-ok "DaVinci Resolve setup ready (downloads on first click)."
+ok "DaVinci Resolve setup ready."
 
-# ─── PWA desktop entries (ChatGPT, M365) ───────────────────────────────────────────
-log "Creating PWA launchers..."
-# Determine best browser for PWAs
-if command -v chromium-browser &>/dev/null; then
-    BROWSER_CMD="chromium-browser"
-elif command -v chromium &>/dev/null; then
-    BROWSER_CMD="chromium"
-else
-    BROWSER_CMD="firefox"
-fi
+# ─── PWA desktop entries — runtime browser detection ─────────────────────────
+log "Creating PWA launchers (runtime browser detection)..."
 
-printf '[Desktop Entry]\nName=ChatGPT\nComment=OpenAI ChatGPT - AI Assistant\nExec=%s --app=https://chat.openai.com --class=ChatGPT\nIcon=internet-web-browser\nTerminal=false\nType=Application\nCategories=Network;Utility;\nStartupWMClass=ChatGPT\n' "$BROWSER_CMD" \
+# ChatGPT
+printf '[Desktop Entry]\nName=ChatGPT\nComment=OpenAI ChatGPT - AI Assistant\nExec=/usr/local/bin/canvera-pwa https://chat.openai.com ChatGPT ChatGPT\nIcon=internet-web-browser\nTerminal=false\nType=Application\nCategories=Network;Utility;\nStartupWMClass=ChatGPT\n' \
     > /usr/share/applications/chatgpt.desktop
 
-printf '[Desktop Entry]\nName=Outlook\nComment=Microsoft Outlook - Email and Calendar\nExec=%s --app=https://outlook.live.com --class=Outlook\nIcon=internet-mail\nTerminal=false\nType=Application\nCategories=Network;Office;Email;\nStartupWMClass=Outlook\n' "$BROWSER_CMD" \
+# Outlook
+printf '[Desktop Entry]\nName=Outlook\nComment=Microsoft Outlook - Email and Calendar\nExec=/usr/local/bin/canvera-pwa https://outlook.live.com Outlook Outlook\nIcon=internet-mail\nTerminal=false\nType=Application\nCategories=Network;Office;Email;\nStartupWMClass=Outlook\n' \
     > /usr/share/applications/outlook-pwa.desktop
 
-printf '[Desktop Entry]\nName=Microsoft Teams\nComment=Microsoft Teams - Collaboration\nExec=%s --app=https://teams.microsoft.com --class=Teams\nIcon=internet-web-browser\nTerminal=false\nType=Application\nCategories=Network;Chat;\nStartupWMClass=Teams\n' "$BROWSER_CMD" \
+# Microsoft Teams
+printf '[Desktop Entry]\nName=Microsoft Teams\nComment=Microsoft Teams - Collaboration\nExec=/usr/local/bin/canvera-pwa https://teams.microsoft.com Teams "Microsoft Teams"\nIcon=internet-web-browser\nTerminal=false\nType=Application\nCategories=Network;Chat;\nStartupWMClass=Teams\n' \
     > /usr/share/applications/teams-pwa.desktop
 
-printf '[Desktop Entry]\nName=OneDrive\nComment=Microsoft OneDrive - Cloud Storage\nExec=%s --app=https://onedrive.live.com --class=OneDrive\nIcon=folder-remote\nTerminal=false\nType=Application\nCategories=Network;FileManager;\nStartupWMClass=OneDrive\n' "$BROWSER_CMD" \
+# OneDrive
+printf '[Desktop Entry]\nName=OneDrive\nComment=Microsoft OneDrive - Cloud Storage\nExec=/usr/local/bin/canvera-pwa https://onedrive.live.com OneDrive OneDrive\nIcon=folder-remote\nTerminal=false\nType=Application\nCategories=Network;FileManager;\nStartupWMClass=OneDrive\n' \
     > /usr/share/applications/onedrive-pwa.desktop
 
 ok "PWA launchers created."
@@ -94,45 +145,130 @@ ok "PWA launchers created."
 # ─── Google Antigravity IDE ─────────────────────────────────────────────────
 log "Setting up Google Antigravity IDE installer..."
 mkdir -p /opt/canvera-apps/antigravity
-# Antigravity IDE by Google DeepMind — download installer on first click
-printf '#!/usr/bin/env bash\n# Google Antigravity IDE Installer\nANTIGRAVITY_DEB="/tmp/antigravity-ide.deb"\nzenity --info --title="Install Google Antigravity IDE" --text="Downloading Google Antigravity IDE...\n\nThis may take a moment." --width=360 --height=120 --timeout=3 2>/dev/null\nwget -q --show-progress -O "${ANTIGRAVITY_DEB}" \nhttps://antigravity.dev/download/linux/antigravity-latest-amd64.deb" 2>/dev/null || {\n    # Fallback: open download page in browser\n    xdg-open "https://antigravity.dev" 2>/dev/null || true\n    zenity --info --title="Google Antigravity IDE" --text="Could not auto-download.\n\nOpening download page in browser.\nDownload the .deb file and double-click to install." --width=380\n    exit 0\n}\n[[ -f "${ANTIGRAVITY_DEB}" ]] && {\n    pkexec apt-get install -y "${ANTIGRAVITY_DEB}" 2>/dev/null || \n    sudo dpkg -i "${ANTIGRAVITY_DEB}" 2>/dev/null || true\n    rm -f "${ANTIGRAVITY_DEB}"\n    zenity --info --title="Installed" --text="Google Antigravity IDE installed." --width=300\n}\n' > /usr/local/bin/canvera-install-antigravity
+
+# NOTE: Antigravity IDE download URL — update when official Linux release is available
+ANTIGRAVITY_URL="https://antigravity.dev/download/linux/antigravity-latest-amd64.deb"
+
+printf '#!/usr/bin/env bash
+# Google Antigravity IDE Installer
+ANTIGRAVITY_DEB="/tmp/antigravity-ide.deb"
+ANTIGRAVITY_URL="https://antigravity.dev/download/linux/antigravity-latest-amd64.deb"
+
+if ! ping -c1 -W3 8.8.8.8 &>/dev/null; then
+    zenity --error --title="Google Antigravity IDE" \
+        --text="<b>No internet connection.</b>\n\nPlease connect to the internet and try again." \
+        --width=360 2>/dev/null || true
+    exit 1
+fi
+
+zenity --info --title="Installing Google Antigravity IDE" \
+    --text="Downloading Google Antigravity IDE...\n\nThis may take a moment." \
+    --width=360 --timeout=3 2>/dev/null || true
+
+wget -q --show-progress -O "${ANTIGRAVITY_DEB}" "${ANTIGRAVITY_URL}" 2>/dev/null || {
+    xdg-open "https://antigravity.dev" 2>/dev/null || true
+    zenity --info --title="Google Antigravity IDE" \
+        --text="Could not auto-download.\n\nOpening download page in browser.\nDownload the .deb file and double-click to install." \
+        --width=380 2>/dev/null || true
+    exit 0
+}
+
+if [[ -f "${ANTIGRAVITY_DEB}" ]]; then
+    pkexec apt-get install -y "${ANTIGRAVITY_DEB}" 2>/dev/null || \
+    sudo dpkg -i "${ANTIGRAVITY_DEB}" 2>/dev/null || true
+    rm -f "${ANTIGRAVITY_DEB}"
+    zenity --info --title="Installed" \
+        --text="<b>Google Antigravity IDE installed successfully!</b>" \
+        --width=300 2>/dev/null || true
+fi
+' > /usr/local/bin/canvera-install-antigravity
 chmod +x /usr/local/bin/canvera-install-antigravity
+
 printf '[Desktop Entry]\nName=Google Antigravity IDE\nComment=AI-powered coding assistant by Google DeepMind\nExec=/usr/local/bin/canvera-install-antigravity\nIcon=applications-development\nTerminal=false\nType=Application\nCategories=Development;IDE;\nStartupNotify=true\n' \
     > /usr/share/applications/antigravity-ide.desktop
 ok "Google Antigravity IDE setup ready."
 
 # ─── Chillio IPTV Player ────────────────────────────────────────────────────
 log "Setting up Chillio IPTV Player..."
-# Chillio IPTV — install via Flatpak (requires Flathub, done at first boot)
-# The first-boot Flatpak installer handles the actual install.
-# Create placeholder .desktop that shows install prompt if Chillio not yet installed.
-printf '[Desktop Entry]\nName=Chillio IPTV Player\nComment=Advanced IPTV player with EPG support\nExec=bash -c "flatpak run io.chillio.Chillio 2>/dev/null || (flatpak install -y flathub io.chillio.Chillio && flatpak run io.chillio.Chillio)"\nIcon=multimedia-player\nTerminal=false\nType=Application\nCategories=AudioVideo;Video;\nStartupNotify=true\n' \
+# Chillio via Flatpak — shows install prompt if not yet installed
+printf '[Desktop Entry]\nName=Chillio IPTV\nComment=Advanced IPTV player with EPG support\nExec=/usr/local/bin/canvera-launch-chillio\nIcon=multimedia-player\nTerminal=false\nType=Application\nCategories=AudioVideo;Video;\nStartupNotify=true\n' \
     > /usr/share/applications/chillio.desktop
-ok "Chillio IPTV setup ready (installs from Flathub on first launch)."
+
+printf '#!/usr/bin/env bash
+# Chillio IPTV launcher — installs via Flatpak if not installed yet
+if flatpak list 2>/dev/null | grep -q "io.chillio"; then
+    exec flatpak run io.chillio.Chillio
+fi
+# Not installed — offer to install
+if ! ping -c1 -W3 8.8.8.8 &>/dev/null; then
+    zenity --error --title="Chillio IPTV" \
+        --text="<b>No internet connection.</b>\n\nPlease connect to the internet to install Chillio IPTV." \
+        --width=360 2>/dev/null || true
+    exit 1
+fi
+zenity --question --title="Install Chillio IPTV" \
+    --text="<b>Chillio IPTV</b> is not installed yet.\n\nWould you like to install it now? (Requires internet)" \
+    --ok-label="Install" --cancel-label="Cancel" --width=380 2>/dev/null || exit 0
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
+flatpak install -y --noninteractive flathub io.chillio.Chillio 2>/dev/null && \
+    exec flatpak run io.chillio.Chillio || \
+    zenity --error --title="Chillio IPTV" \
+        --text="Installation failed. Please try again later." --width=320 2>/dev/null || true
+' > /usr/local/bin/canvera-launch-chillio
+chmod +x /usr/local/bin/canvera-launch-chillio
+ok "Chillio IPTV setup ready."
 
 # ─── Flatpak apps first-boot installer ───────────────────────────────────────
-# Telegram, WhatsApp, Home Assistant, Organic Maps cannot be installed in
-# the build chroot (Flatpak needs a running system with network).
-# This script runs ONCE on first boot after Flathub is configured.
 log "Creating first-boot Flatpak installer..."
-printf '#!/usr/bin/env bash\n# CanveraOS First-Boot Flatpak App Installer\n# Runs once when user first logs in, installs Flatpak apps from Flathub.\nset -euo pipefail\nMARKER="${HOME}/.local/share/canvera/.flatpak-apps-installed"\n[[ -f "${MARKER}" ]] && exit 0\nmkdir -p "$(dirname "${MARKER}")"\nlog() { echo "[FIRSTBOOT] $*"; }\nwarn() { echo "[FIRSTBOOT WARN] $*"; }\n\nlog "Setting up Flathub..."\nflatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true\nflatpak update -y --noninteractive 2>/dev/null || true\n\nlog "Installing Telegram Desktop..."\nflatpak install -y --noninteractive flathub org.telegram.desktop 2>/dev/null || warn "Telegram install failed"\n\nlog "Installing WhatsApp..."\nflatpak install -y --noninteractive flathub io.github.mimbrero.WhatsAppDesktop 2>/dev/null || \\\n    flatpak install -y --noninteractive flathub com.github.eneshecan.WhatsAppForLinux 2>/dev/null || \\\n    warn "WhatsApp install failed"\n\nlog "Installing Organic Maps..."\nflatpak install -y --noninteractive flathub app.organicmaps.desktop 2>/dev/null || warn "Organic Maps install failed"\n\nlog "Installing Home Assistant..."\nflatpak install -y --noninteractive flathub com.cassidyjames.butler 2>/dev/null || warn "Home Assistant install failed"\n\nlog "Installing Chillio IPTV Player..."\nflatpak install -y --noninteractive flathub io.chillio.Chillio 2>/dev/null || warn "Chillio install failed (may not be on Flathub yet)"\n\ntouch "${MARKER}"\nlog "Flatpak apps installation complete."\n' \
-    > /usr/local/bin/canvera-install-flatpak-apps
+
+printf '#!/usr/bin/env bash
+# CanveraOS First-Boot Flatpak App Installer
+# Runs once when user first logs in with internet access.
+MARKER="${HOME}/.local/share/canvera/.flatpak-apps-installed"
+[[ -f "${MARKER}" ]] && exit 0
+
+# Check internet — do NOT run without it
+if ! ping -c1 -W5 8.8.8.8 &>/dev/null; then
+    echo "[FLATPAK] No internet — skipping Flatpak install (will retry next login)"
+    exit 0
+fi
+
+mkdir -p "$(dirname "${MARKER}")"
+
+log() { echo "[FLATPAK] $*"; }
+warn() { echo "[FLATPAK WARN] $*"; }
+
+log "Setting up Flathub..."
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
+flatpak update --user -y --noninteractive 2>/dev/null || true
+
+log "Installing Telegram Desktop..."
+flatpak install --user -y --noninteractive flathub org.telegram.desktop 2>/dev/null || warn "Telegram failed"
+
+log "Installing WhatsApp..."
+flatpak install --user -y --noninteractive flathub io.github.mimbrero.WhatsAppDesktop 2>/dev/null || \
+    flatpak install --user -y --noninteractive flathub com.github.eneshecan.WhatsAppForLinux 2>/dev/null || \
+    warn "WhatsApp failed"
+
+log "Installing Organic Maps..."
+flatpak install --user -y --noninteractive flathub app.organicmaps.desktop 2>/dev/null || warn "Organic Maps failed"
+
+touch "${MARKER}"
+log "Flatpak apps installation complete."
+' > /usr/local/bin/canvera-install-flatpak-apps
 chmod +x /usr/local/bin/canvera-install-flatpak-apps
 
-# Create systemd user service to run Flatpak installer at first graphical login
-# Uses ~/.local/share/canvera/ marker (user-writable — can't use /var/lib/ in user services)
 mkdir -p /etc/systemd/user
 printf '[Unit]\nDescription=CanveraOS First-Boot Flatpak App Installer\nAfter=network-online.target\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/canvera-install-flatpak-apps\nRemainAfterExit=yes\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=default.target\n' \
     > /etc/systemd/user/canvera-flatpak-apps.service
 systemctl --global enable canvera-flatpak-apps.service 2>/dev/null || true
-
-ok "Flatpak apps will be installed on first boot."
+ok "Flatpak apps will be installed on first boot (with internet)."
 
 # ─── Workspace Modes switcher ────────────────────────────────────────────────
 log "Installing Workspace Modes switcher..."
 cp /canvera-scripts/workspace-modes.sh /usr/local/bin/canvera-workspace-modes 2>/dev/null || {
     warn "workspace-modes.sh not found — creating placeholder..."
-    printf '#!/usr/bin/env bash\necho "Workspace Modes: feature coming in next update"\n' \
+    printf '#!/usr/bin/env bash\necho "Workspace Modes: feature coming soon"\n' \
         > /usr/local/bin/canvera-workspace-modes
 }
 chmod +x /usr/local/bin/canvera-workspace-modes
