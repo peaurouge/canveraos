@@ -24,6 +24,19 @@ echo "deb http://archive.ubuntu.com/ubuntu/ noble-backports main restricted univ
 apt-get update -qq
 ok "APT configured."
 
+# ─── PRE-CONFIGURE initramfs-tools BEFORE any kernel install ──────────────────
+# CRITICAL ORDERING: initramfs-tools config MUST exist BEFORE linux-image-generic
+# is installed. Installing linux-image-generic triggers update-initramfs via dpkg.
+# If MODULES=dep is set (or defaulted), update-initramfs tries to detect the root
+# block device. In a chroot there IS no root device → "failed to determine device
+# for /" → dpkg fails → entire build crashes with exit code 100.
+# Setting MODULES=most BEFORE the kernel install prevents this completely.
+log "Pre-configuring initramfs-tools (MODULES=most for chroot compatibility)..."
+mkdir -p /etc/initramfs-tools/conf.d
+printf '# CanveraOS initramfs configuration\n# MODULES=most: works in chroot + supports all hardware on live boot\nMODULES=most\nCOMPRESS=gzip\nBUSYBOX=auto\n' \
+    > /etc/initramfs-tools/conf.d/canvera.conf
+ok "initramfs-tools pre-configured (MODULES=most)."
+
 # ─── Install essential base packages ──────────────────────────────────────────
 log "Installing base system packages..."
 apt-get install -y --no-install-recommends \
@@ -136,10 +149,8 @@ for MOD in overlay squashfs loop; do
         echo "${MOD}" >> /etc/initramfs-tools/modules
 done
 
-# Use default compression (gzip) — do NOT set COMPRESS=lz4 unless lz4 is installed.
-# A failed compression format causes update-initramfs to fail silently.
-printf '# CanveraOS initramfs configuration\n# MODULES=dep + explicit module list + hook = most reliable combo\nMODULES=dep\nCOMPRESS=gzip\nBUSYBOX=auto\n' \
-    > /etc/initramfs-tools/conf.d/canvera.conf
+# initramfs conf.d/canvera.conf already written at top of script (before kernel install)
+# to prevent "failed to determine device for /" during dpkg triggers.
 
 ok "Initramfs hook and module config created."
 
