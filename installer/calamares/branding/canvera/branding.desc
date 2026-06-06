@@ -1,0 +1,42 @@
+---
+# CanveraOS Calamares Branding
+# Required by Calamares — controls colors, strings, and images shown in the installer UI.
+
+componentName: canvera
+
+# ── Strings shown in the installer UI ──────────────────────────────────────────
+strings:
+    productName:         "CanveraOS"
+    shortProductName:    "CanveraOS"
+    version:             "1.0"
+    shortVersion:        "1.0"
+    versionedName:       "CanveraOS 1.0"
+    shortVersionedName:  "CanveraOS 1.0"
+    bootloaderEntryName: "CanveraOS"
+    productUrl:          "https://github.com/peaurouge/canveraos"
+    supportUrl:          "https://github.com/peaurouge/canveraos/issues"
+    knownIssuesUrl:      "https://github.com/peaurouge/canveraos/issues"
+    releaseNotesUrl:     "https://github.com/peaurouge/canveraos/releases"
+    donateUrl:           ""
+
+# ── Images ────────────────────────────────────────────────────────────────────
+images:
+    productLogo:         "canvera-logo.png"
+    productIcon:         "canvera-logo.png"
+    productWelcome:      "canvera-logo.png"
+
+# ── Slideshow during installation ─────────────────────────────────────────────
+slideshow:               "show.qml"
+slideshowAPI:            2
+
+# ── Colors: macOS Tahoe dark style ────────────────────────────────────────────
+colors:
+    sidebarBackground:   "#1C1C1E"
+    sidebarText:         "#F5F5F7"
+    sidebarTextHighlight: "#F5F5F7"
+    sidebarSelect:       "#0A84FF"
+    sidebarTextSelect:   "#FFFFFF"
+
+# ── Style ─────────────────────────────────────────────────────────────────────
+welcomeStyleCalamares:   false
+welcomeExpandingLogo:    true

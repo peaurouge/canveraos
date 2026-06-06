@@ -130,7 +130,12 @@ chroot "${CHROOT_DIR}" apt-get autoremove -y --purge
 chroot "${CHROOT_DIR}" apt-get clean
 chroot "${CHROOT_DIR}" rm -rf /tmp/* /var/tmp/*
 chroot "${CHROOT_DIR}" rm -f /chroot-setup.sh /codecs-install.sh /apps-install.sh
-chroot "${CHROOT_DIR}" rm -rf /canvera-config /canvera-theme /canvera-scripts
+# Remove ALL canvera build-time directories (they've been installed to final locations)
+chroot "${CHROOT_DIR}" rm -rf \
+    /canvera-config \
+    /canvera-theme \
+    /canvera-scripts \
+    /canvera-installer
 ok "Chroot cleaned."
 
 # ─── Step 7: Pack squashfs + build ISO ───────────────────────────────────────

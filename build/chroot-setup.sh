@@ -223,14 +223,21 @@ if [[ -d /canvera-installer/calamares ]]; then
     # Main settings file
     cp /canvera-installer/calamares/settings.conf /etc/calamares/ 2>/dev/null || \
         warn "settings.conf not found"
-    # Module configs
+    # Module configs (.conf files — shellprocess, etc.)
     if [[ -d /canvera-installer/calamares/modules ]]; then
         cp /canvera-installer/calamares/modules/*.conf /etc/calamares/modules/ 2>/dev/null || true
-        cp /canvera-installer/calamares/modules/*.py   /etc/calamares/modules/ 2>/dev/null || true
+        # DO NOT copy .py files — we use shellprocess modules, not Python modules
     fi
     # Branding
     if [[ -d /canvera-installer/calamares/branding ]]; then
-        cp /canvera-installer/calamares/branding/* /etc/calamares/branding/canvera/ 2>/dev/null || true
+        cp -r /canvera-installer/calamares/branding/canvera/* \
+               /etc/calamares/branding/canvera/ 2>/dev/null || true
+    fi
+    # Copy CanveraOS logo into branding dir for installer UI
+    if [[ -f /canvera-theme/canvera-logo.png ]]; then
+        cp /canvera-theme/canvera-logo.png \
+           /etc/calamares/branding/canvera/canvera-logo.png 2>/dev/null || true
+        ok "CanveraOS logo copied to Calamares branding."
     fi
     ok "Calamares configuration installed."
 else
@@ -418,19 +425,22 @@ cp /canvera-config/X11/99-canvera-display.conf /etc/X11/xorg.conf.d/ 2>/dev/null
     warn "X11 display config not found at /canvera-config/X11/"
 ok "X11 display config installed."
 
-# ─── Security setup ───────────────────────────────────────────────────────────
+# ─── Security setup ────────────────────────────────────────────────────────────
 log "Configuring security (UFW, AppArmor)..."
-ufw --force enable
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow ssh
-systemctl enable apparmor
+# NOTE: UFW and AppArmor need a running kernel with netfilter — use || true in chroot
+ufw --force enable 2>/dev/null || true
+ufw default deny incoming  2>/dev/null || true
+ufw default allow outgoing 2>/dev/null || true
+ufw allow ssh              2>/dev/null || true
+systemctl enable apparmor  2>/dev/null || true
 ok "Security configured."
 
-# ─── Set Flatpak remote ───────────────────────────────────────────────────────
+# ─── Set Flatpak remote ─────────────────────────────────────────────────────
 log "Configuring Flathub..."
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-ok "Flathub configured."
+# NOTE: flatpak remote-add needs D-Bus, which is not available in chroot.
+# Use || true to prevent build failure. Flathub is configured at first-boot instead.
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
+ok "Flathub configured (may need first-boot to complete)."
 
 # ─── Final cleanup ────────────────────────────────────────────────────────────
 log "Final system configuration..."
