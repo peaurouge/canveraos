@@ -25,17 +25,71 @@ apt-get update -qq
 ok "APT configured."
 
 # ─── PRE-CONFIGURE initramfs-tools BEFORE any kernel install ──────────────────
-# CRITICAL ORDERING: initramfs-tools config MUST exist BEFORE linux-image-generic
-# is installed. Installing linux-image-generic triggers update-initramfs via dpkg.
-# If MODULES=dep is set (or defaulted), update-initramfs tries to detect the root
-# block device. In a chroot there IS no root device → "failed to determine device
-# for /" → dpkg fails → entire build crashes with exit code 100.
-# Setting MODULES=most BEFORE the kernel install prevents this completely.
-log "Pre-configuring initramfs-tools (MODULES=most for chroot compatibility)..."
+# =============================================================================
+# ALL initramfs config must exist BEFORE linux-image-generic is installed.
+# dpkg triggers update-initramfs IMMEDIATELY during kernel package install.
+# If our hook/config/modules aren't in place at that moment, the initramfs
+# is built without overlay.ko → casper panics at boot:
+#   "(initramfs) /cow format specified as 'overlay' and no support found"
+#
+# THREE things must exist BEFORE the kernel install:
+#   1. conf.d/canvera.conf  → MODULES=most (chroot has no real root device)
+#   2. hooks/zz-canvera-live-modules → copies overlay.ko into initramfs
+#   3. /etc/initramfs-tools/modules → overlay listed for early loading
+# =============================================================================
+log "Pre-configuring initramfs-tools (config + hook + modules — ALL before kernel)..."
+
+# ── 1. Config: MODULES=most ──────────────────────────────────────────────────
 mkdir -p /etc/initramfs-tools/conf.d
-printf '# CanveraOS initramfs configuration\n# MODULES=most: works in chroot + supports all hardware on live boot\nMODULES=most\nCOMPRESS=gzip\nBUSYBOX=auto\n' \
+printf '# CanveraOS initramfs config\nMODULES=most\nCOMPRESS=gzip\nBUSYBOX=auto\n' \
     > /etc/initramfs-tools/conf.d/canvera.conf
-ok "initramfs-tools pre-configured (MODULES=most)."
+
+# ── 2. Hook: force overlay.ko into initramfs ─────────────────────────────────
+mkdir -p /etc/initramfs-tools/hooks
+cat > /etc/initramfs-tools/hooks/zz-canvera-live-modules << 'HOOKEOF'
+#!/bin/sh
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case $1 in prereqs) prereqs; exit 0 ;; esac
+. /usr/share/initramfs-tools/hook-functions
+
+# overlay — Ubuntu 24.04 kernel 6.8: dir is "overlayfs" NOT "overlay"
+copy_modules_dir kernel/fs/overlayfs 2>/dev/null || true
+copy_modules_dir kernel/fs/overlay   2>/dev/null || true
+manual_add_modules overlay  2>/dev/null || true
+
+# Nuclear fallback: find overlay.ko* anywhere and copy it
+if [ -n "${DESTDIR}" ] && [ -n "${MODULESDIR}" ]; then
+    OVL=$(find "${MODULESDIR}" -name "overlay.ko*" -print -quit 2>/dev/null)
+    if [ -n "${OVL}" ]; then
+        REL="${OVL#${MODULESDIR}}"
+        mkdir -p "${DESTDIR}/lib/modules/${version}/$(dirname "${REL}")"
+        cp -f "${OVL}" "${DESTDIR}/lib/modules/${version}/${REL}" 2>/dev/null || true
+    fi
+fi
+
+# squashfs + loop + isofs
+copy_modules_dir kernel/fs/squashfs 2>/dev/null || true
+manual_add_modules squashfs 2>/dev/null || true
+manual_add_modules loop     2>/dev/null || true
+copy_modules_dir kernel/fs/isofs    2>/dev/null || true
+manual_add_modules isofs    2>/dev/null || true
+
+for mod in overlay squashfs loop; do
+    echo "$mod" >> "${DESTDIR}/conf/modules" 2>/dev/null || true
+done
+exit 0
+HOOKEOF
+chmod 755 /etc/initramfs-tools/hooks/zz-canvera-live-modules
+
+# ── 3. Modules list: overlay for early loading ───────────────────────────────
+mkdir -p /etc/initramfs-tools
+for MOD in overlay squashfs loop; do
+    grep -q "^${MOD}$" /etc/initramfs-tools/modules 2>/dev/null || \
+        echo "${MOD}" >> /etc/initramfs-tools/modules
+done
+
+ok "initramfs-tools FULLY pre-configured (config + hook + modules)."
 
 # ─── Install essential base packages ──────────────────────────────────────────
 log "Installing base system packages..."
@@ -84,75 +138,9 @@ locale-gen en_US.UTF-8
 update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 ok "Base packages installed."
 
-# ─── CRITICAL: Force overlay module into initramfs for casper live boot ─────────────
-# The error "(initramfs) /cow format specified as 'overlay' and no support found"
-# means the overlay kernel module is NOT inside the initramfs cpio archive.
-# casper tries: modprobe overlay -> if it fails, it panics with that message.
-#
-# ROOT CAUSES of previous failures:
-# 1. 'aufs' in modules list -> Ubuntu 24.04 has NO aufs module -> update-initramfs
-#    exits non-zero -> hidden by 2>/dev/null -> old/broken initramfs is kept
-# 2. COMPRESS=lz4 -> lz4 not installed -> same silent failure
-# 3. Using -u (update) instead of -c (create) -> might skip rebuild
-#
-# THE ONLY RELIABLE FIX: an initramfs HOOK using copy_modules_dir
-# This is the Ubuntu-standard method used by casper/overlayroot packages.
-
-log "Creating initramfs hook to force overlay module into initramfs..."
-mkdir -p /etc/initramfs-tools/hooks
-mkdir -p /etc/initramfs-tools/conf.d
-
-# The hook is executed by update-initramfs when building the initramfs.
-# copy_modules_dir physically copies the module files into the cpio archive.
-# This works regardless of the MODULES= setting.
-cat > /etc/initramfs-tools/hooks/zz-canvera-live-modules << 'HOOK_EOF'
-#!/bin/sh
-# =============================================================================
-# CanveraOS initramfs hook — forces live-boot modules into the initramfs.
-# Named 'zz-' so it runs LAST (after all other hooks).
-#
-# This fixes: "(initramfs) /cow format specified as 'overlay' and no support found"
-# =============================================================================
-PREREQ=""
-prereqs() { echo "$PREREQ"; }
-case $1 in prereqs) prereqs; exit 0 ;; esac
-
-. /usr/share/initramfs-tools/hook-functions
-
-# overlay: CRITICAL — casper uses this for copy-on-write layer on live boot
-# Without this module in the initramfs, casper panics immediately at boot.
-copy_modules_dir kernel/fs/overlay || manual_add_modules overlay
-
-# squashfs: reads the compressed root filesystem from the ISO
-copy_modules_dir kernel/fs/squashfs || manual_add_modules squashfs
-
-# loop: mounts ISO and disk images as block devices
-manual_add_modules loop
-
-# iso9660: reads ISO 9660 filesystem (the USB/CD format)
-copy_modules_dir kernel/fs/isofs || manual_add_modules isofs
-
-# Ensure these are loaded early during boot (added to conf/modules in the initramfs)
-for mod in overlay squashfs loop; do
-    echo "$mod" >> "${DESTDIR}/conf/modules" 2>/dev/null || true
-done
-
-exit 0
-HOOK_EOF
-chmod 755 /etc/initramfs-tools/hooks/zz-canvera-live-modules
-
-# Belt-and-suspenders: also add to the modules list
-# NOTE: do NOT add 'aufs' — Ubuntu 24.04 kernel does NOT ship aufs.
-mkdir -p /etc/initramfs-tools
-for MOD in overlay squashfs loop; do
-    grep -q "^${MOD}$" /etc/initramfs-tools/modules 2>/dev/null || \
-        echo "${MOD}" >> /etc/initramfs-tools/modules
-done
-
-# initramfs conf.d/canvera.conf already written at top of script (before kernel install)
-# to prevent "failed to determine device for /" during dpkg triggers.
-
-ok "Initramfs hook and module config created."
+# initramfs hook, modules, and config were ALL pre-configured at the top of
+# this script (before kernel install) to ensure they exist when dpkg triggers
+# update-initramfs during linux-image-generic installation.
 
 # Re-ensure universe is available (ubuntu-minimal can reset apt sources)
 log "Re-enabling universe repository for KDE packages..."
@@ -627,21 +615,59 @@ update-initramfs -u -k all 2>&1 | tee -a /tmp/initramfs-build.log || {
     cat /tmp/initramfs-build.log >&2 || true
 }
 
-# VERIFY: confirm overlay module is actually inside the built initramfs
+# VERIFY: confirm overlay module is inside the built initramfs
+# NOTE: Ubuntu 24.04 modules are .ko.zst (zstd compressed), not .ko
+# NOTE: initrd is microcode cpio + gzip cpio concatenated — use unmkinitramfs
 for INITRD in /boot/initrd.img-*; do
     [[ -f "$INITRD" ]] || continue
     log "Verifying overlay module in ${INITRD}..."
-    if zcat "$INITRD" 2>/dev/null | cpio -t 2>/dev/null | grep -q "overlay.ko"; then
-        ok "overlay.ko CONFIRMED inside ${INITRD}"
-    elif lz4cat "$INITRD" 2>/dev/null | cpio -t 2>/dev/null | grep -q "overlay.ko"; then
-        ok "overlay.ko CONFIRMED inside ${INITRD} (lz4)"
+    VERIFY_DIR=$(mktemp -d)
+    # unmkinitramfs handles the concatenated format correctly
+    if command -v unmkinitramfs &>/dev/null; then
+        unmkinitramfs "$INITRD" "$VERIFY_DIR" 2>/dev/null || true
     else
-        warn "WARNING: overlay.ko NOT found in ${INITRD} — live boot will fail!"
-        warn "Attempting forced rebuild with explicit overlay inclusion..."
-        # Last resort: manually copy overlay.ko into an existing initramfs
-        # This is done by forcing a fresh create with the hook in place
-        update-initramfs -c -k all 2>&1 || true
+        # Fallback: skip microcode header, decompress the main initramfs
+        (cd "$VERIFY_DIR" && zcat "$INITRD" 2>/dev/null | cpio -id 2>/dev/null) || true
     fi
+    if find "$VERIFY_DIR" -name "overlay.ko*" -print -quit 2>/dev/null | grep -q .; then
+        ok "overlay.ko CONFIRMED inside ${INITRD}"
+    else
+        warn "overlay.ko NOT found in ${INITRD} — injecting manually!"
+        # NUCLEAR: find overlay.ko from installed kernel, inject into initramfs
+        KVER=$(basename "$INITRD" | sed 's/initrd.img-//')
+        OVL_SRC=$(find /lib/modules/"$KVER" -name "overlay.ko*" -print -quit 2>/dev/null)
+        if [[ -n "$OVL_SRC" ]]; then
+            log "Found ${OVL_SRC} — rebuilding initramfs with forced inclusion..."
+            # Ensure the module is listed and hook is in place, then rebuild
+            echo "overlay" >> /etc/initramfs-tools/modules
+            update-initramfs -c -k "$KVER" 2>&1 || update-initramfs -u -k "$KVER" 2>&1 || true
+            # Verify again
+            VERIFY2=$(mktemp -d)
+            if command -v unmkinitramfs &>/dev/null; then
+                unmkinitramfs "$INITRD" "$VERIFY2" 2>/dev/null || true
+            fi
+            if find "$VERIFY2" -name "overlay.ko*" -print -quit 2>/dev/null | grep -q .; then
+                ok "overlay.ko CONFIRMED after re-injection"
+            else
+                warn "CRITICAL: overlay.ko still missing — attempting raw injection"
+                # Last resort: manually append the module into the initramfs
+                INJECT_DIR=$(mktemp -d)
+                REL_PATH="${OVL_SRC#/lib/modules/${KVER}/}"
+                mkdir -p "${INJECT_DIR}/lib/modules/${KVER}/$(dirname "$REL_PATH")"
+                cp "$OVL_SRC" "${INJECT_DIR}/lib/modules/${KVER}/${REL_PATH}"
+                # Generate modules.dep for the injected module
+                depmod -b "$INJECT_DIR" "$KVER" 2>/dev/null || true
+                # Append as additional cpio to the initramfs
+                (cd "$INJECT_DIR" && find . | cpio -o -H newc 2>/dev/null | gzip) >> "$INITRD"
+                ok "overlay.ko raw-injected into ${INITRD}"
+                rm -rf "$INJECT_DIR"
+            fi
+            rm -rf "$VERIFY2"
+        else
+            warn "CRITICAL: overlay.ko not found in /lib/modules/${KVER} at all!"
+        fi
+    fi
+    rm -rf "$VERIFY_DIR"
 done
 
 ok "Initramfs rebuild complete."
