@@ -97,7 +97,7 @@ git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git \
     bash install.sh -t dark  --opacity solid -d /root/.local/share/themes 2>/dev/null || true
     # Install Firefox theme (makes Firefox look macOS native)
     bash tweaks.sh -f 2>/dev/null || true
-    cd / && rm -rf /tmp/whitesur-gtk
+    cd / && rm -rf /tmp/whitesur-gtk 2>/dev/null || true
     ok "WhiteSur GTK theme installed (GTK apps now look macOS-native)."
 } || {
     warn "WhiteSur GTK theme download failed — GTK apps will use Breeze theme."

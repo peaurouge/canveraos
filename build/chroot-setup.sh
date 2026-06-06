@@ -259,6 +259,60 @@ fi
 
 ok "Calamares installed."
 
+# ─── Create Calamares postinstall script (CRITICAL) ──────────────────────────
+# The shellprocess module executes FILE PATHS, not inline commands.
+# Each entry in canvera_postinstall.conf is a PATH to an executable script.
+# Inline commands like '- "-rm -f /something"' do NOT work — Calamares
+# tries to run a script whose PATH IS the string "rm -f /something" (doesn't exist).
+# Solution: create a REAL script file here, reference its path in the .conf.
+# This script is included in the squashfs and run in the TARGET chroot by Calamares.
+log "Creating Calamares postinstall cleanup script..."
+cat > /usr/local/bin/canvera-postinstall.sh << 'POSTINSTALL_EOF'
+#!/bin/bash
+# =============================================================================
+# CanveraOS — Post-Installation Cleanup Script
+# Executed by Calamares shellprocess@canvera_postinstall inside the TARGET system.
+# All paths here refer to the INSTALLED SYSTEM (not the live session).
+# =============================================================================
+
+set -x  # Log every command to systemd journal for debugging
+
+# 1. Create installed marker
+#    canvera-installer-launcher checks this before launching Calamares.
+#    Without this, Calamares relaunches on every user login.
+touch /etc/canvera-installed
+
+# 2. CRITICAL: Remove live-session SDDM autologin config.
+#    Without this, SDDM on the installed system tries to autologin as 'ubuntu'
+#    (the casper live user). 'ubuntu' doesn't exist on the installed system.
+#    Result: SDDM fails silently → blank screen → infinite login loop.
+rm -f /etc/sddm.conf.d/90-canvera-live-autologin.conf
+# Also remove legacy combined config (from earlier builds before the fix)
+rm -f /etc/sddm.conf.d/canvera.conf
+
+# 3. Remove NOPASSWD sudo rule (only needed for live session; security risk if kept)
+rm -f /etc/sudoers.d/90-canvera-live
+
+# 4. Remove installer autostart from /etc/skel
+#    Future users created on the installed system won't get the installer autostart.
+rm -f /etc/skel/.config/autostart/canvera-installer.desktop
+
+# 5. Remove installer autostart from existing home directories
+#    The Calamares 'users' module copies /etc/skel to the new user's home BEFORE
+#    this postinstall script runs. So we must also delete it from the home dir.
+find /home -maxdepth 5 \
+    -name 'canvera-installer.desktop' \
+    -path '*/autostart/*' \
+    -delete 2>/dev/null || true
+
+# 6. Cleanup
+apt-get clean -y 2>/dev/null || true
+
+echo "CanveraOS postinstall complete" > /var/log/canvera-postinstall.log
+POSTINSTALL_EOF
+chmod +x /usr/local/bin/canvera-postinstall.sh
+ok "Postinstall script created at /usr/local/bin/canvera-postinstall.sh"
+
 # ─── Install filesystem support ───────────────────────────────────────────────
 log "Installing filesystem support (APFS, NTFS, ExFAT, FAT32)..."
 apt-get install -y \
