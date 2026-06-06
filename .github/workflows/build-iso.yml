@@ -137,9 +137,12 @@ jobs:
         run: |
           ISO=$(ls CanveraOS-*.iso | head -1)
           echo "File: ${ISO}  |  Size: $(du -sh ${ISO} | cut -f1)"
+          # ISO was created by sudo (root-owned) — need sudo to write alongside it
           sudo sha256sum "${ISO}" > "/tmp/${ISO}.sha256"
           sudo mv "/tmp/${ISO}.sha256" "${ISO}.sha256"
-          sudo chown runner:runner "${ISO}" "${ISO}.sha256" 2>/dev/null || true
+          # Fix ownership so upload-artifact can read the files
+          sudo chown $USER:$USER "${ISO}" "${ISO}.sha256" 2>/dev/null || \
+              sudo chown runner:runner "${ISO}" "${ISO}.sha256" 2>/dev/null || true
           cat "${ISO}.sha256"
           {
             echo "## ✅ CanveraOS Build Complete"
@@ -179,6 +182,15 @@ jobs:
             A fully pre-configured Linux distribution for creative professionals.
             Built on Ubuntu 24.04 LTS + KDE Plasma 6 with macOS Tahoe-inspired design.
 
+            ### ⬇️ Download
+            > **The ISO file (2.7GB) is too large for GitHub Releases (2GB limit).**
+            > Download directly from the [Actions Artifacts](https://github.com/${{ github.repository }}/actions) tab:
+            > 1. Click the latest workflow run
+            > 2. Scroll to **Artifacts**
+            > 3. Click **CanveraOS-${{ github.event.inputs.version }}-amd64** to download
+
+            The SHA256 checksum file is attached below for verification.
+
             ### What's included
             - 🖥️ KDE Plasma 6 — macOS Tahoe theme, frosted glass dock, traffic-light buttons
             - 🎨 Adobe CC via CrossOver — Photoshop, Illustrator, Premiere, After Effects, Lightroom
@@ -192,7 +204,7 @@ jobs:
             - 🖥️ Smart Workspace Modes — Video Edit, Design, Writing, Gaming
 
             ### Install
-            1. Download the `.iso` file below
+            1. Download the `.iso` file from Artifacts (link above)
             2. Flash to USB with [Balena Etcher](https://etcher.balena.io)
             3. Boot from USB — follow the graphical installer
 
@@ -200,7 +212,7 @@ jobs:
             > **CrossOver** — enter license key on first boot.
             > **Adobe CC** — click app icon → wizard → log in with Adobe ID.
           files: |
-            CanveraOS-*.iso
+            CanveraOS-*.iso.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
