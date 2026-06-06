@@ -142,6 +142,50 @@ apt-get install -y konqueror 2>/dev/null || warn "Konqueror install failed"
 
 ok "Dolphin installed."
 
+# ─── Install network hardware support (ethernet firmware + drivers) ───────────
+log "Installing network hardware support (ethernet firmware + drivers)..."
+
+# Comprehensive firmware — covers Intel, Broadcom, Marvell, Realtek and more
+apt-get install -y linux-firmware
+
+# Realtek RTL8111/8168 — most common desktop/motherboard ethernet chip
+# r8168-dkms provides better compatibility than the built-in r8169 kernel module
+apt-get install -y r8168-dkms 2>/dev/null || \
+    warn "r8168-dkms not found — falling back to built-in r8169 module"
+
+# Realtek RTL8125 — 2.5GbE (newer motherboards: B450/B550/X570/B650 era)
+apt-get install -y r8125-dkms 2>/dev/null || true
+
+# Common network tools
+apt-get install -y \
+    ethtool \
+    net-tools \
+    iproute2 \
+    network-manager \
+    network-manager-gnome \
+    plasma-nm \
+    wpasupplicant
+
+# Broadcom (some systems)
+apt-get install -y bcmwl-kernel-source 2>/dev/null || true
+
+# CRITICAL: Configure NetworkManager to manage ALL interfaces including ethernet.
+# Without managed=true, NetworkManager ignores ethernet listed in /etc/network/interfaces.
+# This is why ethernet appears "unmanaged" or doesn't show up in settings.
+mkdir -p /etc/NetworkManager
+printf '[main]\nplugins=ifupdown,keyfile\n\n[ifupdown]\nmanaged=true\n\n[connectivity]\nuri=http://connectivity-check.ubuntu.com/\ninterval=300\n' \
+    > /etc/NetworkManager/NetworkManager.conf
+
+# Clean /etc/network/interfaces — only keep loopback, let NetworkManager handle the rest
+printf '# CanveraOS — NetworkManager manages all interfaces.\n# Only loopback defined here.\nauto lo\niface lo inet loopback\n' \
+    > /etc/network/interfaces
+
+# Enable NetworkManager on boot
+systemctl enable NetworkManager 2>/dev/null || true
+systemctl enable NetworkManager-wait-online 2>/dev/null || true
+
+ok "Network hardware support configured."
+
 # ─── Install Calamares graphical installer ───────────────────────────────────────
 log "Installing Calamares installer..."
 # Calamares is available in Ubuntu 24.04 universe repo directly (no PPA needed)
