@@ -30,6 +30,12 @@ zenity --info \
     --ok-label="Let's Go" \
     2>/dev/null || true
 
+# ─── Dolphin — Finder-style sidebar (remove system disks) ────────────────────────
+log "Configuring Dolphin sidebar (macOS Finder style)..."
+mkdir -p "${HOME}/.config"
+cp /canvera-config/apps/dolphin/dolphinrc "${HOME}/.config/dolphinrc" 2>/dev/null || true
+bash /canvera-config/apps/dolphin/setup-places.sh 2>/dev/null || true
+
 # ─── Copy wallpapers to backgrounds ──────────────────────────────────────────
 log "Installing wallpapers..."
 # Wallpapers installed at /usr/share/wallpapers/CanveraOS/ by plasma-apply-theme.sh

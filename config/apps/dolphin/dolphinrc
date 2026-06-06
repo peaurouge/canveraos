@@ -1,10 +1,7 @@
 # CanveraOS — Dolphin File Manager Configuration
-# Pre-configured to behave like macOS Finder.
+# macOS Finder-style sidebar: Home, Desktop, Documents, Downloads, Music, Pictures, Videos, Trash
+# No system disk entries, no terminal panel at bottom.
 # Place at: ~/.config/dolphinrc
-#
-# NOTE: Dolphin does not have a native Column View (Miller columns).
-# To compensate, the Folders panel is enabled by default (F7 to toggle)
-# which provides hierarchical column-like navigation on the left side.
 
 [General]
 BrowseThroughArchives=false
@@ -13,8 +10,8 @@ EditableUrl=false
 HomeUrl=file:///home
 OpenNewTabAfterLastTab=true
 RememberOpenedTabs=true
-ShowFullPath=true
-ShowFullPathInTitlebar=true
+ShowFullPath=false
+ShowFullPathInTitlebar=false
 ShowStatusBar=true
 ShowToolbar=true
 ShowZoomSlider=true
@@ -50,7 +47,11 @@ Plugins=appimagethumbnail,audiothumbnail,blenderthumbnail,comicbookthumbnail,cur
 
 [PlacesPanel]
 IconSize=22
-TagsVisible=true
+TagsVisible=false
+# Hide system storage devices (hard disks, root filesystem) — macOS Finder style
+# 0 = visible, 1 = hidden
+# Groups: Places=0, Remote=2, Devices/Storage=3, Tags=4
+HiddenSections=storage devices
 
 [Search]
 Location=Everywhere
@@ -61,20 +62,19 @@ Width=640
 Height=480
 
 [ViewModes]
-# Icon view (0) by default, like macOS Finder
-# Use F3 for split view, F7 for Folders panel (column-like navigation)
+# Icon view (0) — like macOS Finder default
 ViewMode=0
-
-# ─── Folders Panel (replaces Column View — shows folder tree on left) ──────────
-# Enabled by default as the closest equivalent to macOS Column View.
-# Press F7 to toggle it, or use View → Panels → Folders
-[FoldersPanel]
-Width=220
 
 [Sidebar]
 Visible=true
 Width=220
 
-# Panels (Folders panel enabled = column-like navigation)
+# ── Terminal panel ─────────────────────────────────────────────────────────────
+# Visible=false = terminal panel at the bottom is CLOSED by default
+# User can still open it with F4
+[Terminal]
+Visible=false
+Height=150
+
 [ContentDisplay]
 IconSize=22
