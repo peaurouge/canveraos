@@ -339,12 +339,35 @@ printf '[Desktop Entry]\nName=CanveraOS Installer\nExec=/usr/local/bin/canvera-i
 # (For now, Calamares removes the autostart file itself via the users module)
 ok "Calamares autostart configured."
 
-# ─── Plymouth boot splash ────────────────────────────────────────────────────
-log "Configuring Plymouth boot splash..."
-# Set breeze Plymouth theme (clean, dark, matches macOS-style dark boot)
-plymouth-set-default-theme -R breeze 2>/dev/null || \
+# ─── Plymouth boot splash — custom CanveraOS theme ───────────────────────────
+log "Installing custom CanveraOS Plymouth boot splash..."
+
+# Create the custom theme directory
+mkdir -p /usr/share/plymouth/themes/canvera
+
+# Copy the user's actual CanveraOS logo (theme/canvera-logo.png → logo.png)
+if [[ -f /canvera-theme/canvera-logo.png ]]; then
+    cp /canvera-theme/canvera-logo.png /usr/share/plymouth/themes/canvera/logo.png
+    ok "CanveraOS logo copied to Plymouth theme."
+else
+    warn "canvera-logo.png not found at /canvera-theme/ — Plymouth may show no logo."
+fi
+
+# Copy theme descriptor and animation script
+cp /canvera-theme/plymouth/canvera.plymouth \
+   /usr/share/plymouth/themes/canvera/ 2>/dev/null || \
+   warn "canvera.plymouth not found"
+cp /canvera-theme/plymouth/canvera.script \
+   /usr/share/plymouth/themes/canvera/ 2>/dev/null || \
+   warn "canvera.script not found"
+
+# Set CanveraOS as the default Plymouth theme and rebuild initramfs
+plymouth-set-default-theme -R canvera 2>/dev/null || {
+    warn "Could not set canvera as default Plymouth theme — trying fallbacks..."
     plymouth-set-default-theme -R spinner 2>/dev/null || true
-ok "Plymouth configured."
+}
+ok "Plymouth boot splash configured (CanveraOS logo)."
+
 
 # ─── Mask casper-md5check (causes shutdown errors) ────────────────────────────
 log "Masking casper-md5check service..."

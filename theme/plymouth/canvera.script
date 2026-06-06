@@ -1,0 +1,95 @@
+# CanveraOS Plymouth Boot Splash Script
+# macOS Tahoe-inspired: dark background, centered logo, fade-in, progress bar
+# Colors: #1C1C1E background, #0A84FF accent (iOS dark blue)
+
+# ── Background ──────────────────────────────────────────────────────────────
+# macOS Tahoe Dark: #1C1C1E = rgb(0.109, 0.109, 0.118)
+Window.SetBackgroundTopColor(0.109, 0.109, 0.118);
+Window.SetBackgroundBottomColor(0.067, 0.067, 0.075);
+
+# ── CanveraOS Logo ──────────────────────────────────────────────────────────
+logo.image = Image("logo.png");
+
+# Scale logo to reasonable size (max 300px wide, preserve aspect ratio)
+logo_max_width = 300;
+logo_scale = 1.0;
+if (logo.image.GetWidth() > logo_max_width)
+    logo_scale = logo_max_width / logo.image.GetWidth();
+
+logo.scaled = logo.image.Scale(
+    logo.image.GetWidth()  * logo_scale,
+    logo.image.GetHeight() * logo_scale
+);
+
+logo.sprite = Sprite(logo.scaled);
+logo.x = Window.GetWidth()  / 2 - logo.scaled.GetWidth()  / 2;
+logo.y = Window.GetHeight() / 2 - logo.scaled.GetHeight() / 2 - 50;
+logo.sprite.SetX(logo.x);
+logo.sprite.SetY(logo.y);
+logo.sprite.SetOpacity(0);
+
+# ── Progress bar background track ───────────────────────────────────────────
+bar_width  = 240;
+bar_height = 3;
+bar_x = Window.GetWidth() / 2 - bar_width / 2;
+bar_y = Window.GetHeight() / 2 + logo.scaled.GetHeight() / 2 + 30;
+
+# Dark track
+track.image = Image.Scale(
+    Image.CreateWithColor(bar_width, bar_height, 0.2, 0.2, 0.2, 0.5),
+    bar_width, bar_height
+);
+track.sprite = Sprite(track.image);
+track.sprite.SetX(bar_x);
+track.sprite.SetY(bar_y);
+track.sprite.SetOpacity(0.4);
+
+# Accent fill (iOS dark blue #0A84FF = 0.039, 0.518, 1.0)
+progress.image = Image.Scale(
+    Image.CreateWithColor(bar_width, bar_height, 0.039, 0.518, 1.0, 1.0),
+    1, bar_height
+);
+progress.sprite = Sprite(progress.image);
+progress.sprite.SetX(bar_x);
+progress.sprite.SetY(bar_y);
+progress.sprite.SetOpacity(0.9);
+
+# ── Animation state ──────────────────────────────────────────────────────────
+global.opacity       = 0.0;
+global.boot_progress = 0.0;
+
+# ── Fade-in on refresh ───────────────────────────────────────────────────────
+fun refresh_callback() {
+    if (global.opacity < 1.0) {
+        global.opacity = global.opacity + 0.04;
+        if (global.opacity > 1.0)
+            global.opacity = 1.0;
+    }
+    logo.sprite.SetOpacity(global.opacity);
+    track.sprite.SetOpacity(global.opacity * 0.4);
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# ── Progress bar update ───────────────────────────────────────────────────────
+fun progress_callback(duration, progress) {
+    global.boot_progress = progress;
+    w = Math.Int(bar_width * progress);
+    if (w < 1) w = 1;
+    progress.image = Image.Scale(
+        Image.CreateWithColor(bar_width, bar_height, 0.039, 0.518, 1.0, 1.0),
+        w, bar_height
+    );
+    progress.sprite = Sprite(progress.image);
+    progress.sprite.SetX(bar_x);
+    progress.sprite.SetY(bar_y);
+    progress.sprite.SetOpacity(global.opacity * 0.9);
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+# ── Quit: fade out ────────────────────────────────────────────────────────────
+fun quit_callback() {
+    logo.sprite.SetOpacity(0);
+    track.sprite.SetOpacity(0);
+    progress.sprite.SetOpacity(0);
+}
+Plymouth.SetQuitFunction(quit_callback);
