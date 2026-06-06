@@ -19,12 +19,27 @@ DARK_START=$(grep "dark_start" "${CONFIG_FILE}" 2>/dev/null | cut -d= -f2 | tr -
 LIGHT_START=$(grep "light_start" "${CONFIG_FILE}" 2>/dev/null | cut -d= -f2 | tr -d ' ' || echo "07:00")
 ENABLED=$(grep "enabled" "${CONFIG_FILE}" 2>/dev/null | cut -d= -f2 | tr -d ' ' || echo "true")
 
+# Initialize config file with defaults if it doesn't exist
+# Without this, 'sed -i' on a missing file silently fails and current_mode is never persisted,
+# causing the scheduler to re-apply dark mode on every timer tick.
+if [[ ! -f "${CONFIG_FILE}" ]]; then
+    mkdir -p "$(dirname "${CONFIG_FILE}")"
+    printf '[DarkMode]\nenabled=true\ndark_start=19:00\nlight_start=07:00\ncurrent_mode=\n' \
+        > "${CONFIG_FILE}"
+fi
+
 [[ "${ENABLED}" != "true" ]] && exit 0
 
 # ─── Parse times ──────────────────────────────────────────────────────────────
-now_minutes=$(date +%H%M | sed 's/^0//')
+# CRITICAL: Convert ALL times to the SAME unit (minutes from midnight).
+# 'date +%H%M' gives HHMM format (e.g. "0600" = 360 in minutes, but "600" as a number).
+# 'dark_minutes' is computed as hours*60+minutes (e.g. 19:00 = 1140).
+# Mixing these two units causes dark mode to switch at wrong times.
+# FIX: use 'date +%H:%M | awk' to convert now to minutes, same as dark_minutes.
+now_minutes=$(date +%H:%M | awk -F: '{print $1*60+$2}')
 dark_minutes=$(echo "${DARK_START}" | awk -F: '{print $1*60+$2}')
 light_minutes=$(echo "${LIGHT_START}" | awk -F: '{print $1*60+$2}')
+
 
 # ─── Determine current mode ───────────────────────────────────────────────────
 should_be_dark() {

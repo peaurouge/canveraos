@@ -139,7 +139,8 @@ create_adobe_launcher() {
     cat > "${SCRIPT}" << SCRIPT
 #!/usr/bin/env bash
 # CanveraOS launcher for ${DISPLAY_NAME}
-set -euo pipefail
+# NOTE: No 'set -euo pipefail' here — zenity dialog close returns non-zero
+# and we don't want the launcher to die silently when the user closes a dialog.
 
 BOTTLE_PATH="\${HOME}/.cxoffice/${BOTTLE}"
 CX_INSTALL="/opt/cxoffice"
@@ -151,7 +152,7 @@ if [[ ! -f "\${BOTTLE_PATH}/drive_c/Program Files/Adobe/Adobe Creative Cloud/ACC
         --title="Install ${DISPLAY_NAME}" \
         --text="<b>${DISPLAY_NAME}</b> needs to be installed first.\n\nYou will need:\n• An Adobe Creative Cloud subscription\n• Your Adobe ID and password\n\nClick OK to start the installation. It may take a few minutes." \
         --width=420 --height=220 \
-        2>/dev/null
+        2>/dev/null || true  # || true: user closing dialog = OK, don't exit
 
     # Download Creative Cloud installer
     CC_INSTALLER="\${HOME}/Downloads/CreativeCloudSetup.exe"
@@ -171,18 +172,18 @@ if [[ ! -f "\${BOTTLE_PATH}/drive_c/Program Files/Adobe/Adobe Creative Cloud/ACC
 
     if [[ -f "\${CC_INSTALLER}" ]]; then
         # Run installer inside CrossOver bottle
-        "\${CX_INSTALL}/bin/wine" --bottle "${BOTTLE}" "\${CC_INSTALLER}"
+        "\${CX_INSTALL}/bin/wine" --bottle "${BOTTLE}" "\${CC_INSTALLER}" || true
     else
         zenity --error \
             --title="Download Failed" \
             --text="Could not download the Adobe Creative Cloud installer.\n\nPlease download it manually from:\nhttps://www.adobe.com/creativecloud/desktop-app.html\n\nThen place it in your Downloads folder and try again." \
-            --width=400
+            --width=400 2>/dev/null || true
         exit 1
     fi
 fi
 
 # Launch the specific Adobe app
-exec "\${CX_INSTALL}/bin/wine" --bottle "${BOTTLE}" "${EXE_PATH}"
+exec "\${CX_INSTALL}/bin/wine" --bottle "${BOTTLE}" "${EXE_PATH}" 2>/dev/null || true
 SCRIPT
 
     chmod +x "${SCRIPT}"

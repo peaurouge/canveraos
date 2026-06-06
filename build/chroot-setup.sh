@@ -396,14 +396,26 @@ ok "CopyQ installed."
 log "Installing Inter font (SF Pro equivalent)..."
 apt-get install -y fonts-inter fonts-noto fonts-noto-color-emoji \
     fonts-liberation fonts-open-sans
-# Download Inter variable font
+# Download Inter variable font (optional — build-time internet required)
+# CRITICAL: wrap in { ... } || warn so network failures don't kill the build.
+# fonts-inter from apt above already provides Inter; this adds the variable/extended weights.
 mkdir -p /usr/share/fonts/canvera
-wget -q -O /tmp/inter.zip "https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip"
-unzip -q /tmp/inter.zip -d /tmp/inter/
-find /tmp/inter -name "*.ttf" -o -name "*.otf" | xargs -I{} cp {} /usr/share/fonts/canvera/
-fc-cache -f
-rm -rf /tmp/inter.zip /tmp/inter/
+{
+    wget -q --timeout=30 -O /tmp/inter.zip \
+        "https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip" && \
+    unzip -q /tmp/inter.zip -d /tmp/inter/ && \
+    find /tmp/inter -name "*.ttf" -o -name "*.otf" | \
+        xargs -I{} cp {} /usr/share/fonts/canvera/ 2>/dev/null || true
+    rm -rf /tmp/inter.zip /tmp/inter/
+    fc-cache -f
+    ok "Inter variable font downloaded and installed."
+} || {
+    warn "Inter font download failed (network issue) — using fonts-inter from apt instead."
+    rm -rf /tmp/inter.zip /tmp/inter/ 2>/dev/null || true
+    fc-cache -f 2>/dev/null || true
+}
 ok "Fonts installed."
+
 
 # ─── Configure SDDM login manager ──────────────────────────────────────────────
 log "Configuring SDDM..."

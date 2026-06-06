@@ -15,7 +15,13 @@ export DEBIAN_FRONTEND=noninteractive
 
 # ─── VLC ──────────────────────────────────────────────────────────────────────
 log "Installing VLC Media Player..."
-apt-get install -y vlc vlc-plugin-access-extra vlc-plugin-notify
+# IMPORTANT: Install VLC core FIRST (mandatory), then optional plugins separately.
+# With 'set -euo pipefail', if vlc-plugin-access-extra or vlc-plugin-notify have
+# been renamed/merged in Ubuntu 24.04 Noble, a single combined apt call would exit
+# the ENTIRE script — nothing after this line would run (no Steam, Chrome, VS Code...).
+apt-get install -y vlc  # Core VLC — mandatory, always exists
+apt-get install -y vlc-plugin-access-extra vlc-plugin-notify 2>/dev/null || \
+    warn "Some VLC plugins not in Noble repos — VLC still works, extra plugins may be missing."
 ok "VLC installed."
 
 # ─── Steam + Proton ───────────────────────────────────────────────────────────
