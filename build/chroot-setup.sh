@@ -142,13 +142,37 @@ apt-get install -y konqueror 2>/dev/null || warn "Konqueror install failed"
 
 ok "Dolphin installed."
 
-# ─── Install Calamares graphical installer ────────────────────────────────────────
+# ─── Install Calamares graphical installer ───────────────────────────────────────
 log "Installing Calamares installer..."
 # Calamares is available in Ubuntu 24.04 universe repo directly (no PPA needed)
 apt-get install -y calamares calamares-settings-ubuntu python3-pyqt5 || {
     warn "calamares-settings-ubuntu not found, installing calamares only..."
     apt-get install -y calamares python3-pyqt5 || warn "Calamares install failed — skipping"
 }
+
+# ─── Install Calamares configuration into /etc/calamares (İ CRITICAL) ──────────────
+# Without this, Calamares has no settings.conf and silently crashes on launch.
+log "Installing Calamares configuration files..."
+mkdir -p /etc/calamares/modules /etc/calamares/branding/canvera
+
+if [[ -d /canvera-installer/calamares ]]; then
+    # Main settings file
+    cp /canvera-installer/calamares/settings.conf /etc/calamares/ 2>/dev/null || \
+        warn "settings.conf not found"
+    # Module configs
+    if [[ -d /canvera-installer/calamares/modules ]]; then
+        cp /canvera-installer/calamares/modules/*.conf /etc/calamares/modules/ 2>/dev/null || true
+        cp /canvera-installer/calamares/modules/*.py   /etc/calamares/modules/ 2>/dev/null || true
+    fi
+    # Branding
+    if [[ -d /canvera-installer/calamares/branding ]]; then
+        cp /canvera-installer/calamares/branding/* /etc/calamares/branding/canvera/ 2>/dev/null || true
+    fi
+    ok "Calamares configuration installed."
+else
+    warn "Calamares config source not found at /canvera-installer/calamares"
+fi
+
 ok "Calamares installed."
 
 # ─── Install filesystem support ───────────────────────────────────────────────
@@ -192,12 +216,28 @@ fc-cache -f
 rm -rf /tmp/inter.zip /tmp/inter/
 ok "Fonts installed."
 
-# ─── Configure SDDM login manager ────────────────────────────────────────────
+# ─── Configure SDDM login manager ──────────────────────────────────────────────
 log "Configuring SDDM..."
 systemctl enable sddm
 mkdir -p /etc/sddm.conf.d
-printf '[Theme]\nCurrent=breeze\n\n[General]\nDisplayServer=x11\nGreeterEnvironment=QT_SCREEN_SCALE_FACTORS=1\n\n[Autologin]\nRelogin=false\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' > /etc/sddm.conf.d/canvera.conf
+# Live session: autologin as ubuntu (casper user) so Calamares autostart fires immediately
+printf '[Theme]\nCurrent=breeze\n\n[General]\nDisplayServer=x11\nGreeterEnvironment=QT_SCREEN_SCALE_FACTORS=1\n\n[Autologin]\nUser=ubuntu\nSession=plasma\nRelogin=false\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' \
+    > /etc/sddm.conf.d/canvera.conf
 ok "SDDM configured."
+
+# ─── Configure casper live session ────────────────────────────────────────────────
+log "Configuring casper live session (autologin, live user)..."
+# casper creates the live user 'ubuntu' with no password
+# This file tells casper the live session username and hostname
+printf 'export USERNAME=ubuntu\nexport USERFULLNAME="Live Session"\nexport HOST=canveraos\nexport BUILD_SYSTEM=casper\nexport FLAVOUR=CanveraOS\n' \
+    > /etc/casper.conf
+
+# CRITICAL: Give live user NOPASSWD sudo so Calamares can launch as root
+# Without this, 'sudo calamares' asks for a password that doesn't exist
+printf 'ubuntu ALL=(ALL) NOPASSWD: ALL\ncanvera ALL=(ALL) NOPASSWD: ALL\n%%sudo ALL=(ALL) NOPASSWD: ALL\n' \
+    > /etc/sudoers.d/90-canvera-live
+chmod 440 /etc/sudoers.d/90-canvera-live
+ok "Live session configured."
 
 # ─── Apply KDE theme configuration ───────────────────────────────────────────
 log "Applying CanveraOS KDE theme..."
@@ -239,14 +279,20 @@ mkdir -p /etc/skel/.config/autostart
 printf '[Desktop Entry]\nName=CanveraOS First Boot Setup\nComment=Runs once on first login to configure CanveraOS\nExec=/usr/local/bin/canvera-first-boot\nTerminal=false\nType=Application\nX-GNOME-Autostart-Delay=5\nX-GNOME-Autostart-enabled=true\n' \
     > /etc/skel/.config/autostart/canvera-first-boot.desktop
 
-# ─── Calamares installer auto-launch ─────────────────────────────────────────
+# ─── Calamares installer auto-launch ─────────────────────────────────────────────
 log "Setting up Calamares installer auto-launch..."
-# When booted with 'automatic-ubiquity' kernel param, Calamares starts automatically
-printf '#!/usr/bin/env bash\n# Auto-launches Calamares installer when booted with automatic-ubiquity\nif grep -q "automatic-ubiquity" /proc/cmdline 2>/dev/null; then\n    sleep 8\n    sudo -E calamares 2>/dev/null || calamares 2>/dev/null || true\nfi\n' \
+# Launches Calamares automatically when booted with 'automatic-ubiquity' kernel param
+# Also handles direct launch if parameter is missing (for robustness)
+printf '#!/usr/bin/env bash\n# CanveraOS Calamares auto-launcher\n# Runs on desktop autostart — launches installer if booting from ISO\n\n# Only run on live session (not after installation)\n# If /etc/canvera-installed exists, this is an installed system — skip\n[[ -f /etc/canvera-installed ]] && exit 0\n\n# Wait for KDE desktop to fully load\nsleep 10\n\n# Launch Calamares as root (NOPASSWD sudo configured for live user)\nif command -v calamares &>/dev/null; then\n    sudo -E calamares 2>/tmp/calamares-launch.log || {\n        # Fallback: try pkexec\n        pkexec calamares 2>>/tmp/calamares-launch.log || {\n            # Last resort: notify user\n            notify-send "CanveraOS Installer" \\\n                "Installer failed to launch. Check /tmp/calamares-launch.log" 2>/dev/null || true\n        }\n    }\nfi\n' \
     > /usr/local/bin/canvera-installer-launcher
 chmod +x /usr/local/bin/canvera-installer-launcher
-printf '[Desktop Entry]\nName=CanveraOS Installer\nExec=/usr/local/bin/canvera-installer-launcher\nTerminal=false\nType=Application\nNoDisplay=true\nX-GNOME-Autostart-enabled=true\n' \
+
+printf '[Desktop Entry]\nName=CanveraOS Installer\nExec=/usr/local/bin/canvera-installer-launcher\nTerminal=false\nType=Application\nNoDisplay=true\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Delay=5\n' \
     > /etc/skel/.config/autostart/canvera-installer.desktop
+
+# Mark installed systems so installer doesn't re-launch after installation
+# Calamares will create this file via a postinstall hook
+# (For now, Calamares removes the autostart file itself via the users module)
 ok "Calamares autostart configured."
 
 # ─── Plymouth boot splash ────────────────────────────────────────────────────

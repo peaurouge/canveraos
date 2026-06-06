@@ -106,9 +106,10 @@ ok "Filesystems mounted."
 
 # ─── Step 4: Copy project files into chroot ───────────────────────────────────
 log "STEP 4/8 — Copying CanveraOS files into chroot..."
-cp -r "${PROJECT_ROOT}/config"  "${CHROOT_DIR}/canvera-config"
-cp -r "${PROJECT_ROOT}/theme"   "${CHROOT_DIR}/canvera-theme"
-cp -r "${PROJECT_ROOT}/scripts" "${CHROOT_DIR}/canvera-scripts"
+cp -r "${PROJECT_ROOT}/config"    "${CHROOT_DIR}/canvera-config"
+cp -r "${PROJECT_ROOT}/theme"     "${CHROOT_DIR}/canvera-theme"
+cp -r "${PROJECT_ROOT}/scripts"   "${CHROOT_DIR}/canvera-scripts"
+cp -r "${PROJECT_ROOT}/installer" "${CHROOT_DIR}/canvera-installer"
 cp "${PROJECT_ROOT}/build/chroot-setup.sh"  "${CHROOT_DIR}/chroot-setup.sh"
 cp "${PROJECT_ROOT}/build/codecs-install.sh" "${CHROOT_DIR}/codecs-install.sh"
 cp "${PROJECT_ROOT}/build/apps-install.sh"   "${CHROOT_DIR}/apps-install.sh"
