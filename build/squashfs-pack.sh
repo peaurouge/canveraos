@@ -71,7 +71,7 @@ mkdir -p "${ISO_DIR}/boot/grub"
 mkdir -p "${ISO_DIR}/EFI/BOOT"
 
 # GRUB config (using printf to avoid heredoc issues)
-printf '# CanveraOS GRUB Boot Configuration\nset default=0\nset timeout=5\n\nmenuentry "Install CanveraOS" --class canvera --class gnu-linux --class os {\n    linux   /casper/vmlinuz boot=casper only-ubiquity quiet splash console=tty1 loglevel=3 systemd.show_status=false\n    initrd  /casper/initrd\n}\n\nmenuentry "CanveraOS (Safe Graphics)" --class canvera {\n    linux   /casper/vmlinuz boot=casper only-ubiquity quiet splash nomodeset\n    initrd  /casper/initrd\n}\n\nmenuentry "Try CanveraOS without installing" --class canvera {\n    linux   /casper/vmlinuz boot=casper quiet splash\n    initrd  /casper/initrd\n}\n' \
+printf '# CanveraOS GRUB Boot Configuration\nset default=0\nset timeout=10\n\nmenuentry "Try CanveraOS (Live Session)" --class canvera --class gnu-linux --class os {\n    linux   /casper/vmlinuz boot=casper quiet splash ---\n    initrd  /casper/initrd\n}\n\nmenuentry "Install CanveraOS" --class canvera --class gnu-linux --class os {\n    linux   /casper/vmlinuz boot=casper quiet splash only-ubiquity ---\n    initrd  /casper/initrd\n}\n\nmenuentry "CanveraOS (Safe Graphics / VirtualBox)" --class canvera {\n    linux   /casper/vmlinuz boot=casper quiet splash nomodeset xforcevesa ---\n    initrd  /casper/initrd\n}\n\nmenuentry "CanveraOS (Debug - show boot messages)" --class canvera {\n    linux   /casper/vmlinuz boot=casper ---\n    initrd  /casper/initrd\n}\n' \
     > "${ISO_DIR}/boot/grub/grub.cfg"
 
 # Create GRUB EFI image
