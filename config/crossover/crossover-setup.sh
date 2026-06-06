@@ -10,6 +10,7 @@ set -euo pipefail
 log()  { echo -e "\033[0;36m[ CXOV]\033[0m $*"; }
 ok()   { echo -e "\033[0;32m[  OK  ]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[ WARN]\033[0m $*"; }
+err()  { echo -e "\033[0;31m[ERROR]\033[0m $*"; exit 1; }
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -22,7 +23,8 @@ wget -q --show-progress -O "${CROSSOVER_DEB}" "${CROSSOVER_URL}" || {
     warn "Direct download failed — trying alternate URL..."
     wget -q -O "${CROSSOVER_DEB}" \
         "https://media.codeweavers.com/pub/crossover/cxlinux/demo/crossover_24.0.8-1.deb" || {
-        error "CrossOver download failed. Check internet connection."
+        warn "CrossOver download failed — skipping CrossOver install."
+        exit 0
     }
 }
 
@@ -46,11 +48,12 @@ apt-get install -y \
     libxdamage1 \
     libxinerama1 \
     libxkbfile1 \
-    libasound2 \
     libpulse0 \
     libvulkan1 \
     mesa-vulkan-drivers \
     vulkan-tools
+# libasound2 was renamed to libasound2t64 in Ubuntu 24.04
+apt-get install -y libasound2t64 2>/dev/null || apt-get install -y libasound2 2>/dev/null || true
 
 # ─── Install CrossOver ────────────────────────────────────────────────────────
 log "Installing CrossOver package..."
@@ -104,13 +107,8 @@ create_adobe_bottle() {
         --component "corefonts" 2>/dev/null || true
 
     # Enable GPU acceleration for the bottle
-    cat >> "${BOTTLE_PATH}/cxbottle.conf" << CONF
-
-[CanveraOS]
-EnableGPU=true
-UseVulkan=true
-DXVKEnabled=true
-CONF
+    printf '\n[CanveraOS]\nEnableGPU=true\nUseVulkan=true\nDXVKEnabled=true\n' \
+        >> "${BOTTLE_PATH}/cxbottle.conf" 2>/dev/null || true
 
     ok "Bottle ${BOTTLE_NAME} created and configured."
 }
@@ -190,19 +188,9 @@ SCRIPT
     chmod +x "${SCRIPT}"
 
     # Create .desktop file
-    cat > "/usr/share/applications/${APP_NAME,,}.desktop" << DESKTOP
-[Desktop Entry]
-Name=${DISPLAY_NAME}
-Comment=Professional creative software by Adobe
-Exec=${SCRIPT}
-Icon=${ICON_NAME}
-Terminal=false
-Type=Application
-Categories=Graphics;Photography;AudioVideo;
-StartupNotify=true
-StartupWMClass=${APP_NAME}
-MimeType=
-DESKTOP
+    printf '[Desktop Entry]\nName=%s\nComment=Professional creative software by Adobe\nExec=%s\nIcon=%s\nTerminal=false\nType=Application\nCategories=Graphics;Photography;AudioVideo;\nStartupNotify=true\nStartupWMClass=%s\n' \
+        "${DISPLAY_NAME}" "${SCRIPT}" "${ICON_NAME}" "${APP_NAME}" \
+        > "/usr/share/applications/${APP_NAME,,}.desktop"
 }
 
 create_adobe_launcher "Photoshop" "Photoshop" \
@@ -245,17 +233,9 @@ create_office_launcher() {
 SCRIPT
     chmod +x "${SCRIPT}"
 
-    cat > "/usr/share/applications/office-${APP,,}.desktop" << DESKTOP
-[Desktop Entry]
-Name=Microsoft ${DISPLAY}
-Comment=Microsoft ${DISPLAY} via CrossOver
-Exec=${SCRIPT}
-Icon=${ICON}
-Terminal=false
-Type=Application
-Categories=Office;
-StartupNotify=true
-DESKTOP
+    printf '[Desktop Entry]\nName=Microsoft %s\nComment=Microsoft %s via CrossOver\nExec=%s\nIcon=%s\nTerminal=false\nType=Application\nCategories=Office;\nStartupNotify=true\n' \
+        "${DISPLAY}" "${DISPLAY}" "${SCRIPT}" "${ICON}" \
+        > "/usr/share/applications/office-${APP,,}.desktop"
 }
 
 create_office_launcher "Word" "Word" \
