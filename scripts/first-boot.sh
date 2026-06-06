@@ -30,12 +30,12 @@ zenity --info \
     --ok-label="Let's Go" \
     2>/dev/null || true
 
-# ─── Copy wallpapers to system location ───────────────────────────────────────
+# ─── Copy wallpapers to backgrounds ──────────────────────────────────────────
 log "Installing wallpapers..."
-sudo mkdir -p /usr/share/canvera/wallpapers
-sudo cp /usr/share/canvera/wallpapers/canvera-dark.png \
+# Wallpapers installed at /usr/share/wallpapers/CanveraOS/ by plasma-apply-theme.sh
+sudo cp /usr/share/wallpapers/CanveraOS/canvera-dark.png \
         /usr/share/backgrounds/canvera-dark.png 2>/dev/null || true
-sudo cp /usr/share/canvera/wallpapers/canvera-light.png \
+sudo cp /usr/share/wallpapers/CanveraOS/canvera-light.png \
         /usr/share/backgrounds/canvera-light.png 2>/dev/null || true
 
 # ─── Set wallpaper based on current mode ──────────────────────────────────────
@@ -94,24 +94,17 @@ kwriteconfig5 --file krunnerrc --group "Plugins" \
 
 log "Keyboard shortcuts configured."
 
-# ─── Start Latte Dock ─────────────────────────────────────────────────────────
-log "Starting Latte Dock..."
-latte-dock --replace &
+# ─── Start Plank Dock ────────────────────────────────────────────────────────
+log "Starting Plank dock..."
+plank & 2>/dev/null || true
 sleep 2
 
 # ─── Start CopyQ in background ────────────────────────────────────────────────
 log "Starting CopyQ clipboard manager..."
 mkdir -p "${HOME}/.config/autostart"
-cat > "${HOME}/.config/autostart/copyq.desktop" << 'DESKTOP'
-[Desktop Entry]
-Name=CopyQ Clipboard Manager
-Exec=copyq
-Icon=copyq
-Terminal=false
-Type=Application
-X-KDE-autostart-after=panel
-DESKTOP
-copyq &
+printf '[Desktop Entry]\nName=CopyQ Clipboard Manager\nExec=copyq\nIcon=copyq\nTerminal=false\nType=Application\nX-KDE-autostart-after=panel\n' \
+    > "${HOME}/.config/autostart/copyq.desktop"
+copyq & 2>/dev/null || true
 
 # ─── Configure dark mode scheduler as user service ────────────────────────────
 log "Enabling dark mode scheduler..."
