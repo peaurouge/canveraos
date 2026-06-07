@@ -16,7 +16,7 @@ warn()  { echo -e "${YELLOW}[ WARN ]${RESET} $*"; }
 error() { echo -e "${RED}[ERROR ]${RESET} $*"; exit 1; }
 
 # ─── Configuration ────────────────────────────────────────────────────────────
-CANVERA_VERSION="${CANVERA_VERSION:-1.0.0}"   # Read from env var (set by GitHub Actions) or default
+CANVERA_VERSION="${CANVERA_VERSION:-1.0.0}"   # Read from env var
 UBUNTU_CODENAME="noble"          # Ubuntu 24.04 LTS codename
 ARCH="amd64"
 BUILD_DIR="$(pwd)/build-workspace"
@@ -44,8 +44,6 @@ check_deps() {
 }
 
 # ─── Root check ───────────────────────────────────────────────────────────────
-# In GitHub Actions the runner uses passwordless sudo and may not be EUID 0.
-# When called via 'sudo bash build/build-iso.sh' this check passes correctly.
 [[ "$EUID" -ne 0 ]] && error "This script must be run as root. Use: sudo bash build/build-iso.sh"
 
 echo -e "${BOLD}${BLUE}"
@@ -69,8 +67,6 @@ ok "Workspace ready at ${BUILD_DIR}"
 
 # ─── Step 2: Debootstrap Ubuntu 24.04 ────────────────────────────────────────
 log "STEP 2/8 — Bootstrapping Ubuntu 24.04 LTS (${UBUNTU_CODENAME})..."
-log "  This downloads ~200MB. Please wait..."
-
 debootstrap \
     --arch="${ARCH}" \
     --include=sudo,curl,wget,ca-certificates,gnupg,lsb-release \
@@ -87,9 +83,8 @@ mount -t proc  proc   "${CHROOT_DIR}/proc"
 mount -t sysfs sysfs  "${CHROOT_DIR}/sys"
 mount -t devpts devpts "${CHROOT_DIR}/dev/pts"
 
-# Cleanup trap — always unmount on exit
 cleanup() {
-    log "Cleaning up mounts..."
+    log "Emergency cleanup: Unmounting filesystems..."
     umount -lf "${CHROOT_DIR}/dev/pts" 2>/dev/null || true
     umount -lf "${CHROOT_DIR}/dev"     2>/dev/null || true
     umount -lf "${CHROOT_DIR}/run"     2>/dev/null || true
@@ -108,15 +103,11 @@ cp -r "${PROJECT_ROOT}/installer" "${CHROOT_DIR}/canvera-installer"
 cp "${PROJECT_ROOT}/build/chroot-setup.sh"  "${CHROOT_DIR}/chroot-setup.sh"
 cp "${PROJECT_ROOT}/build/codecs-install.sh" "${CHROOT_DIR}/codecs-install.sh"
 cp "${PROJECT_ROOT}/build/apps-install.sh"   "${CHROOT_DIR}/apps-install.sh"
-chmod +x "${CHROOT_DIR}/chroot-setup.sh" \
-         "${CHROOT_DIR}/codecs-install.sh" \
-         "${CHROOT_DIR}/apps-install.sh"
+chmod +x "${CHROOT_DIR}/chroot-setup.sh" "${CHROOT_DIR}/codecs-install.sh" "${CHROOT_DIR}/apps-install.sh"
 ok "Files copied."
 
 # ─── Step 5: Run chroot setup ────────────────────────────────────────────────
-log "Installing LIVE boot infrastructure inside chroot..."
-
-# Universe ve Multiverse depolarını aktif ediyoruz
+log "STEP 5/8 — Running chroot setup (KDE, themes, apps, codecs)..."
 cat <<EOF > "${CHROOT_DIR}/etc/apt/sources.list"
 deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME} main restricted universe multiverse
 deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates main restricted universe multiverse
@@ -124,52 +115,40 @@ deb http://security.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-security main restrict
 EOF
 
 chroot "${CHROOT_DIR}" apt-get update
-
-chroot "${CHROOT_DIR}" apt-get install -y \
-    casper \
-    live-boot \
-    live-config \
-    initramfs-tools \
-    linux-image-generic \
-    squashfs-tools
-
-ok "Live boot packages installed."
-
-log "Enabling overlay support..."
+chroot "${CHROOT_DIR}" apt-get install -y casper live-boot live-config initramfs-tools linux-image-generic squashfs-tools
 echo overlay >> "${CHROOT_DIR}/etc/initramfs-tools/modules"
-ok "Overlay module enabled."
 
-log "STEP 5/8 — Running chroot setup (KDE, themes, apps, codecs)..."
-log "  This will take 30–60 minutes depending on internet speed."
 chroot "${CHROOT_DIR}" /bin/bash /chroot-setup.sh
-ok "Chroot setup complete."
 
-log "Rebuilding initramfs with overlay support..."
 chroot "${CHROOT_DIR}" update-initramfs -u -k all
-ok "Initramfs rebuilt."
+ok "Chroot setup complete."
 
 # ─── Step 6: Clean up chroot ──────────────────────────────────────────────────
 log "STEP 6/8 — Cleaning up chroot..."
 chroot "${CHROOT_DIR}" apt-get autoremove -y --purge
 chroot "${CHROOT_DIR}" apt-get clean
-chroot "${CHROOT_DIR}" rm -rf /tmp/* /var/tmp/*
-chroot "${CHROOT_DIR}" rm -f /chroot-setup.sh /codecs-install.sh /apps-install.sh
-chroot "${CHROOT_DIR}" rm -rf /canvera-config /canvera-theme /canvera-scripts /canvera-installer
+chroot "${CHROOT_DIR}" rm -rf /tmp/* /var/tmp/* /chroot-setup.sh /codecs-install.sh /apps-install.sh /canvera-config /canvera-theme /canvera-scripts /canvera-installer
 ok "Chroot cleanup complete."
+
+# ─── Step 6.5: CRITICAL - Unmount virtual filesystems BEFORE squashing ────────
+log "STEP 6.5 — Unmounting virtual filesystems to prevent infinite compression loop..."
+umount -lf "${CHROOT_DIR}/dev/pts" 2>/dev/null || true
+umount -lf "${CHROOT_DIR}/dev"     2>/dev/null || true
+umount -lf "${CHROOT_DIR}/run"     2>/dev/null || true
+umount -lf "${CHROOT_DIR}/proc"    2>/dev/null || true
+umount -lf "${CHROOT_DIR}/sys"     2>/dev/null || true
+ok "Virtual filesystems unmounted."
 
 # ─── Step 7: Build ISO filesystem ─────────────────────────────────────────────
 log "STEP 7/8 — Building ISO filesystem..."
 mkdir -p "${ISO_DIR}/casper"
 
-# Copy kernel and initramfs
 cp "${CHROOT_DIR}/boot/vmlinuz" "${ISO_DIR}/casper/vmlinuz"
 cp "${CHROOT_DIR}/boot/initrd.img" "${ISO_DIR}/casper/initrd"
 
-# Squash the chroot
 log "Compressing filesystem (this takes time)..."
 mksquashfs "${CHROOT_DIR}" "${ISO_DIR}/casper/filesystem.squashfs" -comp xz -b 1M -Xdict-size 100% -e boot
 
-# Create GRUB config (Direct Install option included)
 cat <<EOF > "${ISO_DIR}/boot/grub/grub.cfg"
 set timeout=5
 set default=0
@@ -186,7 +165,5 @@ ok "ISO filesystem built."
 
 # ─── Step 8: Generate ISO with xorriso ────────────────────────────────────────
 log "STEP 8/8 — Generating bootable ISO..."
-
 grub-mkrescue -o "${OUTPUT_ISO}" "${ISO_DIR}"
-
 ok "ISO Generation Complete: ${OUTPUT_ISO}"
