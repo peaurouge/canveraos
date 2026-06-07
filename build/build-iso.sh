@@ -71,11 +71,6 @@ ok "Workspace ready at ${BUILD_DIR}"
 log "STEP 2/8 — Bootstrapping Ubuntu 24.04 LTS (${UBUNTU_CODENAME})..."
 log "  This downloads ~200MB. Please wait..."
 
-# IMPORTANT: Keep --include MINIMAL here.
-# Packages like casper, linux-image-generic, laptop-detect, os-prober
-# need a fully configured chroot with /dev, /proc, /sys mounted to run
-# their post-install scripts. They are installed in chroot-setup.sh (Step 5).
-# Only include packages that safely configure in a minimal bootstrap context.
 debootstrap \
     --arch="${ARCH}" \
     --include=sudo,curl,wget,ca-certificates,gnupg,lsb-release \
@@ -118,11 +113,40 @@ chmod +x "${CHROOT_DIR}/chroot-setup.sh" \
          "${CHROOT_DIR}/apps-install.sh"
 ok "Files copied."
 
-# ─── Step 5: Run chroot setup ─────────────────────────────────────────────────
+# ─── Step 5: Run chroot setup ────────────────────────────────────────────────
+log "Installing LIVE boot infrastructure inside chroot..."
+
+# YENİ EKLENEN KISIM: Universe ve Multiverse depolarını aktif ediyoruz
+cat <<EOF > "${CHROOT_DIR}/etc/apt/sources.list"
+deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME} main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-security main restricted universe multiverse
+EOF
+
+chroot "${CHROOT_DIR}" apt-get update
+
+chroot "${CHROOT_DIR}" apt-get install -y \
+    casper \
+    live-boot \
+    live-config \
+    initramfs-tools \
+    linux-image-generic \
+    squashfs-tools
+
+ok "Live boot packages installed."
+
+log "Enabling overlay support..."
+echo overlay >> "${CHROOT_DIR}/etc/initramfs-tools/modules"
+ok "Overlay module enabled."
+
 log "STEP 5/8 — Running chroot setup (KDE, themes, apps, codecs)..."
 log "  This will take 30–60 minutes depending on internet speed."
 chroot "${CHROOT_DIR}" /bin/bash /chroot-setup.sh
 ok "Chroot setup complete."
+
+log "Rebuilding initramfs with overlay support..."
+chroot "${CHROOT_DIR}" update-initramfs -u -k all
+ok "Initramfs rebuilt."
 
 # ─── Step 6: Clean up chroot ──────────────────────────────────────────────────
 log "STEP 6/8 — Cleaning up chroot..."
@@ -136,28 +160,4 @@ chroot "${CHROOT_DIR}" rm -rf \
     /canvera-theme \
     /canvera-scripts \
     /canvera-installer
-ok "Chroot cleaned."
-
-# ─── Step 7: Pack squashfs + build ISO ───────────────────────────────────────
-log "STEP 7/8 — Packing filesystem and building ISO..."
-bash "${PROJECT_ROOT}/build/squashfs-pack.sh" \
-    "${CHROOT_DIR}" "${ISO_DIR}" "${OUTPUT_ISO}" "${PROJECT_ROOT}"
-ok "ISO built."
-
-# ─── Step 8: Verify ───────────────────────────────────────────────────────────
-log "STEP 8/8 — Verifying output..."
-if [[ -f "${OUTPUT_ISO}" ]]; then
-    ISO_SIZE=$(du -sh "${OUTPUT_ISO}" | cut -f1)
-    ISO_HASH=$(sha256sum "${OUTPUT_ISO}" | cut -d' ' -f1)
-    echo -e "\n${GREEN}${BOLD}════════════════════════════════════════${RESET}"
-    echo -e "${GREEN}${BOLD}  CanveraOS ISO build SUCCESSFUL!${RESET}"
-    echo -e "${GREEN}${BOLD}════════════════════════════════════════${RESET}"
-    echo -e "  File:    ${OUTPUT_ISO}"
-    echo -e "  Size:    ${ISO_SIZE}"
-    echo -e "  SHA256:  ${ISO_HASH}"
-    echo -e "  Built:   $(date '+%Y-%m-%d %H:%M:%S')"
-    echo -e "\n  Flash with: sudo dd if=${OUTPUT_ISO} of=/dev/sdX bs=4M status=progress"
-    echo -e "  Or use Balena Etcher for a GUI experience.\n"
-else
-    error "ISO file not found! Build may have failed. Check logs above."
-fi
+ok "Ch
