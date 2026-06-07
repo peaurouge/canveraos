@@ -116,7 +116,7 @@ ok "Files copied."
 # ─── Step 5: Run chroot setup ────────────────────────────────────────────────
 log "Installing LIVE boot infrastructure inside chroot..."
 
-# YENİ EKLENEN KISIM: Universe ve Multiverse depolarını aktif ediyoruz
+# Universe ve Multiverse depolarını aktif ediyoruz
 cat <<EOF > "${CHROOT_DIR}/etc/apt/sources.list"
 deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME} main restricted universe multiverse
 deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates main restricted universe multiverse
@@ -154,10 +154,39 @@ chroot "${CHROOT_DIR}" apt-get autoremove -y --purge
 chroot "${CHROOT_DIR}" apt-get clean
 chroot "${CHROOT_DIR}" rm -rf /tmp/* /var/tmp/*
 chroot "${CHROOT_DIR}" rm -f /chroot-setup.sh /codecs-install.sh /apps-install.sh
-# Remove ALL canvera build-time directories (they've been installed to final locations)
-chroot "${CHROOT_DIR}" rm -rf \
-    /canvera-config \
-    /canvera-theme \
-    /canvera-scripts \
-    /canvera-installer
-ok "Ch
+chroot "${CHROOT_DIR}" rm -rf /canvera-config /canvera-theme /canvera-scripts /canvera-installer
+ok "Chroot cleanup complete."
+
+# ─── Step 7: Build ISO filesystem ─────────────────────────────────────────────
+log "STEP 7/8 — Building ISO filesystem..."
+mkdir -p "${ISO_DIR}/casper"
+
+# Copy kernel and initramfs
+cp "${CHROOT_DIR}/boot/vmlinuz" "${ISO_DIR}/casper/vmlinuz"
+cp "${CHROOT_DIR}/boot/initrd.img" "${ISO_DIR}/casper/initrd"
+
+# Squash the chroot
+log "Compressing filesystem (this takes time)..."
+mksquashfs "${CHROOT_DIR}" "${ISO_DIR}/casper/filesystem.squashfs" -comp xz -b 1M -Xdict-size 100% -e boot
+
+# Create GRUB config (Direct Install option included)
+cat <<EOF > "${ISO_DIR}/boot/grub/grub.cfg"
+set timeout=5
+set default=0
+menuentry "Try CanveraOS" {
+    linux /casper/vmlinuz boot=casper quiet splash ---
+    initrd /casper/initrd
+}
+menuentry "Install CanveraOS" {
+    linux /casper/vmlinuz boot=casper quiet splash direct-install ---
+    initrd /casper/initrd
+}
+EOF
+ok "ISO filesystem built."
+
+# ─── Step 8: Generate ISO with xorriso ────────────────────────────────────────
+log "STEP 8/8 — Generating bootable ISO..."
+
+grub-mkrescue -o "${OUTPUT_ISO}" "${ISO_DIR}"
+
+ok "ISO Generation Complete: ${OUTPUT_ISO}"
