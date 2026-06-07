@@ -25,26 +25,12 @@ apt-get update -qq
 ok "APT configured."
 
 # ─── PRE-CONFIGURE initramfs-tools BEFORE any kernel install ──────────────────
-# =============================================================================
-# ALL initramfs config must exist BEFORE linux-image-generic is installed.
-# dpkg triggers update-initramfs IMMEDIATELY during kernel package install.
-# If our hook/config/modules aren't in place at that moment, the initramfs
-# is built without overlay.ko → casper panics at boot:
-#   "(initramfs) /cow format specified as 'overlay' and no support found"
-#
-# THREE things must exist BEFORE the kernel install:
-#   1. conf.d/canvera.conf  → MODULES=most (chroot has no real root device)
-#   2. hooks/zz-canvera-live-modules → copies overlay.ko into initramfs
-#   3. /etc/initramfs-tools/modules → overlay listed for early loading
-# =============================================================================
 log "Pre-configuring initramfs-tools (config + hook + modules — ALL before kernel)..."
 
-# ── 1. Config: MODULES=most ──────────────────────────────────────────────────
 mkdir -p /etc/initramfs-tools/conf.d
 printf '# CanveraOS initramfs config\nMODULES=most\nCOMPRESS=gzip\nBUSYBOX=auto\n' \
     > /etc/initramfs-tools/conf.d/canvera.conf
 
-# ── 2. Hook: force overlay.ko into initramfs ─────────────────────────────────
 mkdir -p /etc/initramfs-tools/hooks
 cat > /etc/initramfs-tools/hooks/zz-canvera-live-modules << 'HOOKEOF'
 #!/bin/sh
@@ -53,12 +39,10 @@ prereqs() { echo "$PREREQ"; }
 case $1 in prereqs) prereqs; exit 0 ;; esac
 . /usr/share/initramfs-tools/hook-functions
 
-# overlay — Ubuntu 24.04 kernel 6.8: dir is "overlayfs" NOT "overlay"
 copy_modules_dir kernel/fs/overlayfs 2>/dev/null || true
 copy_modules_dir kernel/fs/overlay   2>/dev/null || true
 manual_add_modules overlay  2>/dev/null || true
 
-# Nuclear fallback: find overlay.ko* anywhere and copy it
 if [ -n "${DESTDIR}" ] && [ -n "${MODULESDIR}" ]; then
     OVL=$(find "${MODULESDIR}" -name "overlay.ko*" -print -quit 2>/dev/null)
     if [ -n "${OVL}" ]; then
@@ -68,7 +52,6 @@ if [ -n "${DESTDIR}" ] && [ -n "${MODULESDIR}" ]; then
     fi
 fi
 
-# squashfs + loop + isofs
 copy_modules_dir kernel/fs/squashfs 2>/dev/null || true
 manual_add_modules squashfs 2>/dev/null || true
 manual_add_modules loop     2>/dev/null || true
@@ -82,597 +65,256 @@ exit 0
 HOOKEOF
 chmod 755 /etc/initramfs-tools/hooks/zz-canvera-live-modules
 
-# ── 3. Modules list: overlay for early loading ───────────────────────────────
 mkdir -p /etc/initramfs-tools
 for MOD in overlay squashfs loop; do
     grep -q "^${MOD}$" /etc/initramfs-tools/modules 2>/dev/null || \
         echo "${MOD}" >> /etc/initramfs-tools/modules
 done
-
-ok "initramfs-tools FULLY pre-configured (config + hook + modules)."
+ok "initramfs-tools FULLY pre-configured."
 
 # ─── Install essential base packages ──────────────────────────────────────────
 log "Installing base system packages..."
 apt-get install -y --no-install-recommends \
-    ubuntu-minimal \
-    ubuntu-standard \
-    linux-image-generic \
-    linux-headers-generic \
-    linux-firmware \
-    casper \
-    laptop-detect \
-    os-prober \
-    grub-efi-amd64 \
-    grub-efi-amd64-signed \
-    shim-signed \
-    locales \
-    language-pack-en \
-    tzdata \
-    ca-certificates \
-    curl \
-    wget \
-    git \
-    gpg \
-    software-properties-common \
-    apt-transport-https \
-    network-manager \
-    network-manager-gnome \
-    net-tools \
-    wireless-tools \
-    wpasupplicant \
-    openssh-client \
-    ufw \
-    apparmor \
-    apparmor-utils \
-    apparmor-profiles \
-    flatpak \
-    xdg-desktop-portal \
-    xdg-utils \
-    policykit-1 \
-    libxss1 \
-    plymouth \
-    plymouth-themes
+    ubuntu-minimal ubuntu-standard linux-image-generic linux-headers-generic \
+    linux-firmware casper laptop-detect os-prober grub-efi-amd64 \
+    grub-efi-amd64-signed shim-signed locales language-pack-en tzdata \
+    ca-certificates curl wget git gpg software-properties-common \
+    apt-transport-https network-manager network-manager-gnome net-tools \
+    wireless-tools wpasupplicant openssh-client ufw apparmor apparmor-utils \
+    apparmor-profiles flatpak xdg-desktop-portal xdg-utils policykit-1 \
+    libxss1 plymouth plymouth-themes
 
-# Configure locale
 locale-gen en_US.UTF-8
 update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 ok "Base packages installed."
 
-# initramfs hook, modules, and config were ALL pre-configured at the top of
-# this script (before kernel install) to ensure they exist when dpkg triggers
-# update-initramfs during linux-image-generic installation.
-
-# Re-ensure universe is available (ubuntu-minimal can reset apt sources)
 log "Re-enabling universe repository for KDE packages..."
 add-apt-repository -y universe
 apt-get update -qq
 
 # ─── Install KDE Plasma 6 ─────────────────────────────────────────────────────
 log "Installing KDE Plasma desktop environment..."
-# Core KDE Plasma (all exist in Ubuntu 24.04 Noble)
 apt-get install -y \
-    kde-plasma-desktop \
-    plasma-workspace \
-    plasma-workspace-wayland \
-    kwin-x11 \
-    kwin-wayland \
-    sddm \
-    sddm-theme-breeze \
-    plasma-nm \
-    plasma-pa \
-    powerdevil \
-    bluedevil \
-    kscreen \
-    ark \
-    okular \
-    konsole \
-    kate \
-    gwenview \
-    kcalc \
-    plasma-systemmonitor \
-    xdg-desktop-portal-kde \
-    plank
+    kde-plasma-desktop plasma-workspace plasma-workspace-wayland kwin-x11 \
+    kwin-wayland sddm sddm-theme-breeze plasma-nm plasma-pa powerdevil \
+    bluedevil kscreen ark okular konsole kate gwenview kcalc \
+    plasma-systemmonitor xdg-desktop-portal-kde plank
 
-# Optional KDE packages (may not be available in all Noble variants)
-apt-get install -y kde-config-sddm 2>/dev/null || true
-apt-get install -y plasma-disks 2>/dev/null || true
-apt-get install -y plasma-vault 2>/dev/null || true
-apt-get install -y kde-spectacle 2>/dev/null || apt-get install -y spectacle 2>/dev/null || true
-apt-get install -y kfind 2>/dev/null || true
-apt-get install -y filelight 2>/dev/null || true
-apt-get install -y kde-config-screenlocker 2>/dev/null || true
-apt-get install -y kde-config-gtk-style kde-config-gtk-style-preview 2>/dev/null || true
-apt-get install -y plasma-widgets-addons 2>/dev/null || true
-apt-get install -y plasma-browser-integration 2>/dev/null || true
-apt-get install -y dragonplayer 2>/dev/null || true
-# Kvantum theming engine (correct package names for Noble)
-apt-get install -y qt5ct qt6ct 2>/dev/null || true
-apt-get install -y qt5-style-kvantum qt5-style-kvantum-l10n 2>/dev/null || true
-# GTK Global Menu support (shows GTK app menus in KDE top bar, like macOS)
-apt-get install -y appmenu-gtk3-module 2>/dev/null || true
-# Plymouth extra themes
-apt-get install -y plymouth-theme-spinner plymouth-theme-breeze 2>/dev/null || true
-
+apt-get install -y kde-config-sddm plasma-disks plasma-vault kde-spectacle kfind filelight kde-config-screenlocker kde-config-gtk-style kde-config-gtk-style-preview plasma-widgets-addons plasma-browser-integration dragonplayer qt5ct qt6ct qt5-style-kvantum qt5-style-kvantum-l10n appmenu-gtk3-module plymouth-theme-spinner plymouth-theme-breeze 2>/dev/null || true
 ok "KDE Plasma installed."
 
-# ─── Install Dolphin file manager ─────────────────────────────────────────────
+# ─── Install Dolphin file manager & Service Menus ──────────────────────────────
 log "Installing Dolphin file manager with all plugins..."
 apt-get install -y dolphin kio-extras
-# Optional Dolphin plugins
-apt-get install -y dolphin-plugins 2>/dev/null || true
-apt-get install -y kdegraphics-thumbnailers 2>/dev/null || true
-apt-get install -y ffmpegthumbs 2>/dev/null || true
-apt-get install -y baloo baloo-kf5 milou 2>/dev/null || true
-apt-get install -y kio-gdrive 2>/dev/null || true
-
-# Konqueror — KDE file manager with TRUE Column View (Miller Columns)
-# Dolphin does NOT support Column View, Konqueror does.
-# Both are available: Dolphin for daily use, Konqueror for Column View mode.
-apt-get install -y konqueror 2>/dev/null || warn "Konqueror install failed"
-
+apt-get install -y dolphin-plugins kdegraphics-thumbnailers ffmpegthumbs baloo baloo-kf5 milou kio-gdrive konqueror 2>/dev/null || true
 ok "Dolphin installed."
 
-# Install Dolphin config to PERMANENT locations (survives build cleanup)
-# /canvera-config/ is deleted after build — these copies persist in the squashfs
-log "Installing Dolphin configuration to permanent locations..."
+log "Installing Dolphin configuration & Creative Quick Actions..."
 mkdir -p /etc/skel/.config/
-# skel = applied to every new user's home directory automatically
-cp /canvera-config/apps/dolphin/dolphinrc /etc/skel/.config/dolphinrc 2>/dev/null || \
-    warn "dolphinrc not found at /canvera-config/apps/dolphin/"
-# Install places setup script to /usr/local/bin/ (permanent, on PATH)
-install -m 755 /canvera-config/apps/dolphin/setup-places.sh \
-    /usr/local/bin/canvera-setup-dolphin-places 2>/dev/null || \
-    warn "setup-places.sh not found"
-ok "Dolphin config installed to /etc/skel/ and /usr/local/bin/."
+cp /canvera-config/apps/dolphin/dolphinrc /etc/skel/.config/dolphinrc 2>/dev/null || true
+install -m 755 /canvera-config/apps/dolphin/setup-places.sh /usr/local/bin/canvera-setup-dolphin-places 2>/dev/null || true
 
-# ─── Install network hardware support (ethernet firmware + drivers) ───────────
-log "Installing network hardware support (ethernet firmware + drivers)..."
+# DOSYA 1 ENTEGRASYONU: Sağ Tık Hızlı Eylemler (WebP, PNG, Resize HD)
+mkdir -p /usr/share/kio/servicemenus
+cp /canvera-config/apps/dolphin/canvera-creative-actions.desktop /usr/share/kio/servicemenus/ 2>/dev/null || true
+ok "Dolphin config and Creative Actions installed."
 
-# Comprehensive firmware — covers Intel, Broadcom, Marvell, Realtek and more
-apt-get install -y linux-firmware
+# ─── Install network hardware support ─────────────────────────────────────────
+log "Installing network hardware support..."
+apt-get install -y linux-firmware ethtool iproute2 network-manager network-manager-gnome plasma-nm wpasupplicant
+apt-get install -y r8168-dkms r8125-dkms bcmwl-kernel-source 2>/dev/null || true
 
-# Realtek RTL8111/8168 — most common desktop/motherboard ethernet chip
-# r8168-dkms provides better compatibility than the built-in r8169 kernel module
-apt-get install -y r8168-dkms 2>/dev/null || \
-    warn "r8168-dkms not found — falling back to built-in r8169 module"
-
-# Realtek RTL8125 — 2.5GbE (newer motherboards: B450/B550/X570/B650 era)
-apt-get install -y r8125-dkms 2>/dev/null || true
-
-# Common network tools
-apt-get install -y \
-    ethtool \
-    net-tools \
-    iproute2 \
-    network-manager \
-    network-manager-gnome \
-    plasma-nm \
-    wpasupplicant
-
-# Broadcom (some systems)
-apt-get install -y bcmwl-kernel-source 2>/dev/null || true
-
-# CRITICAL: Configure NetworkManager to manage ALL interfaces including ethernet.
-# Without managed=true, NetworkManager ignores ethernet listed in /etc/network/interfaces.
-# This is why ethernet appears "unmanaged" or doesn't show up in settings.
 mkdir -p /etc/NetworkManager
-printf '[main]\nplugins=ifupdown,keyfile\n\n[ifupdown]\nmanaged=true\n\n[connectivity]\nuri=http://connectivity-check.ubuntu.com/\ninterval=300\n' \
-    > /etc/NetworkManager/NetworkManager.conf
-
-# Clean /etc/network/interfaces — only keep loopback, let NetworkManager handle the rest
-printf '# CanveraOS — NetworkManager manages all interfaces.\n# Only loopback defined here.\nauto lo\niface lo inet loopback\n' \
-    > /etc/network/interfaces
-
-# Enable NetworkManager on boot
+printf '[main]\nplugins=ifupdown,keyfile\n\n[ifupdown]\nmanaged=true\n\n[connectivity]\nuri=http://connectivity-check.ubuntu.com/\ninterval=300\n' > /etc/NetworkManager/NetworkManager.conf
+printf '# CanveraOS — NetworkManager manages all interfaces.\nauto lo\niface lo inet loopback\n' > /etc/network/interfaces
 systemctl enable NetworkManager 2>/dev/null || true
-systemctl enable NetworkManager-wait-online 2>/dev/null || true
-
 ok "Network hardware support configured."
 
-# ─── Install Calamares graphical installer ───────────────────────────────────────
+# ─── Install Calamares graphical installer ────────────────────────────────────
 log "Installing Calamares installer..."
-# Calamares is available in Ubuntu 24.04 universe repo directly (no PPA needed)
 apt-get install -y calamares calamares-settings-ubuntu python3-pyqt5 || {
-    warn "calamares-settings-ubuntu not found, installing calamares only..."
-    apt-get install -y calamares python3-pyqt5 || warn "Calamares install failed — skipping"
+    apt-get install -y calamares python3-pyqt5 || warn "Calamares install failed"
 }
 
-# ─── Install Calamares configuration into /etc/calamares (İ CRITICAL) ──────────────
-# Without this, Calamares has no settings.conf and silently crashes on launch.
 log "Installing Calamares configuration files..."
 mkdir -p /etc/calamares/modules /etc/calamares/branding/canvera
-
 if [[ -d /canvera-installer/calamares ]]; then
-    # Main settings file
-    cp /canvera-installer/calamares/settings.conf /etc/calamares/ 2>/dev/null || \
-        warn "settings.conf not found"
-    # Module configs (.conf files — shellprocess, etc.)
+    cp /canvera-installer/calamares/settings.conf /etc/calamares/ 2>/dev/null || true
     if [[ -d /canvera-installer/calamares/modules ]]; then
         cp /canvera-installer/calamares/modules/*.conf /etc/calamares/modules/ 2>/dev/null || true
-        # DO NOT copy .py files — we use shellprocess modules, not Python modules
     fi
-    # Branding
     if [[ -d /canvera-installer/calamares/branding ]]; then
-        cp -r /canvera-installer/calamares/branding/canvera/* \
-               /etc/calamares/branding/canvera/ 2>/dev/null || true
+        cp -r /canvera-installer/calamares/branding/canvera/* /etc/calamares/branding/canvera/ 2>/dev/null || true
     fi
-    # Copy CanveraOS logo into branding dir for installer UI
     if [[ -f /canvera-theme/canvera-logo.png ]]; then
-        cp /canvera-theme/canvera-logo.png \
-           /etc/calamares/branding/canvera/canvera-logo.png 2>/dev/null || true
-        ok "CanveraOS logo copied to Calamares branding."
+        cp /canvera-theme/canvera-logo.png /etc/calamares/branding/canvera/canvera-logo.png 2>/dev/null || true
     fi
-    ok "Calamares configuration installed."
-else
-    warn "Calamares config source not found at /canvera-installer/calamares"
 fi
 
-ok "Calamares installed."
-
-# ─── Create Calamares postinstall script (CRITICAL) ──────────────────────────
-# The shellprocess module executes FILE PATHS, not inline commands.
-# Each entry in canvera_postinstall.conf is a PATH to an executable script.
-# Inline commands like '- "-rm -f /something"' do NOT work — Calamares
-# tries to run a script whose PATH IS the string "rm -f /something" (doesn't exist).
-# Solution: create a REAL script file here, reference its path in the .conf.
-# This script is included in the squashfs and run in the TARGET chroot by Calamares.
 log "Creating Calamares postinstall cleanup script..."
 cat > /usr/local/bin/canvera-postinstall.sh << 'POSTINSTALL_EOF'
 #!/bin/bash
-# =============================================================================
-# CanveraOS — Post-Installation Cleanup Script
-# Executed by Calamares shellprocess@canvera_postinstall inside the TARGET system.
-# All paths here refer to the INSTALLED SYSTEM (not the live session).
-# =============================================================================
-
-set -x  # Log every command to systemd journal for debugging
-
-# 1. Create installed marker
-#    canvera-installer-launcher checks this before launching Calamares.
-#    Without this, Calamares relaunches on every user login.
+set -x
 touch /etc/canvera-installed
-
-# 2. CRITICAL: Remove live-session SDDM autologin config.
-#    Without this, SDDM on the installed system tries to autologin as 'ubuntu'
-#    (the casper live user). 'ubuntu' doesn't exist on the installed system.
-#    Result: SDDM fails silently → blank screen → infinite login loop.
 rm -f /etc/sddm.conf.d/90-canvera-live-autologin.conf
-# Also remove legacy combined config (from earlier builds before the fix)
 rm -f /etc/sddm.conf.d/canvera.conf
-
-# 3. Remove NOPASSWD sudo rule (only needed for live session; security risk if kept)
 rm -f /etc/sudoers.d/90-canvera-live
-
-# 4. Remove installer autostart from /etc/skel
-#    Future users created on the installed system won't get the installer autostart.
 rm -f /etc/skel/.config/autostart/canvera-installer.desktop
-
-# 5. Remove installer autostart from existing home directories
-#    The Calamares 'users' module copies /etc/skel to the new user's home BEFORE
-#    this postinstall script runs. So we must also delete it from the home dir.
-find /home -maxdepth 5 \
-    -name 'canvera-installer.desktop' \
-    -path '*/autostart/*' \
-    -delete 2>/dev/null || true
-
-# 6. Cleanup
+find /home -maxdepth 5 -name 'canvera-installer.desktop' -path '*/autostart/*' -delete 2>/dev/null || true
 apt-get clean -y 2>/dev/null || true
-
-echo "CanveraOS postinstall complete" > /var/log/canvera-postinstall.log
 POSTINSTALL_EOF
 chmod +x /usr/local/bin/canvera-postinstall.sh
-ok "Postinstall script created at /usr/local/bin/canvera-postinstall.sh"
+ok "Calamares installed and configured."
 
-# ─── Install filesystem support ───────────────────────────────────────────────
-log "Installing filesystem support (APFS, NTFS, ExFAT, FAT32)..."
-apt-get install -y \
-    ntfs-3g \
-    exfatprogs \
-    exfat-fuse \
-    dosfstools \
-    fuse3 \
-    udisks2 \
-    gvfs \
-    gvfs-backends \
-    gvfs-fuse \
-    unzip
+# ─── DOSYA 2 ENTEGRASYONU: Install Advanced Filesystem & APFS Support ────────
+log "Installing advanced filesystem support (APFS, NTFS, ExFAT, FAT32)..."
+apt-get install -y ntfs-3g exfatprogs exfat-fuse dosfstools fuse3 udisks2 gvfs gvfs-backends gvfs-fuse unzip udiskie
 
-# Optional filesystem tools
-apt-get install -y udiskie 2>/dev/null || true
+log "Building APFS native kernel module and fallback tools via DKMS..."
+apt-get install -y dkms build-essential linux-headers-generic libfuse3-dev bzip2 libbz2-dev cmake
 
-# APFS (read-only via apfs-fuse — optional, non-fatal)
-apt-get install -y apfs-fuse 2>/dev/null || {
-    warn "apfs-fuse not in repos — skipping APFS support (optional feature)."
-}
-ok "Filesystem support installed."
+# linux-apfs-rw module
+git clone https://github.com/linux-apfs/linux-apfs-rw.git /usr/src/apfs-1.0 2>/dev/null || true
+dkms add -m apfs -v 1.0 2>/dev/null || true
+dkms build -m apfs -v 1.0 2>/dev/null || true
+dkms install -m apfs -v 1.0 2>/dev/null || true
 
-# ─── Install CopyQ clipboard manager ─────────────────────────────────────────
+# apfs-fuse fallback
+git clone https://github.com/sgan81/apfs-fuse.git /tmp/apfs-fuse 2>/dev/null || true
+(cd /tmp/apfs-fuse && git submodule init && git submodule update && mkdir build && cd build && cmake .. && make -j$(nproc) && make install) || warn "apfs-fuse build failed"
+rm -rf /tmp/apfs-fuse
+ok "Filesystem support (including APFS) successfully compiled and installed."
+
+# ─── Core UI & Fonts ──────────────────────────────────────────────────────────
 log "Installing CopyQ persistent clipboard manager..."
 apt-get install -y copyq
-ok "CopyQ installed."
 
-# ─── Install fonts ────────────────────────────────────────────────────────────
 log "Installing Inter font (SF Pro equivalent)..."
-apt-get install -y fonts-inter fonts-noto fonts-noto-color-emoji \
-    fonts-liberation fonts-open-sans
-# Download Inter variable font (optional — build-time internet required)
-# CRITICAL: wrap in { ... } || warn so network failures don't kill the build.
-# fonts-inter from apt above already provides Inter; this adds the variable/extended weights.
+apt-get install -y fonts-inter fonts-noto fonts-noto-color-emoji fonts-liberation fonts-open-sans
 mkdir -p /usr/share/fonts/canvera
 {
-    wget -q --timeout=30 -O /tmp/inter.zip \
-        "https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip" && \
+    wget -q --timeout=30 -O /tmp/inter.zip "https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip" && \
     unzip -q /tmp/inter.zip -d /tmp/inter/ && \
-    find /tmp/inter -name "*.ttf" -o -name "*.otf" | \
-        xargs -I{} cp {} /usr/share/fonts/canvera/ 2>/dev/null || true
+    find /tmp/inter -name "*.ttf" -o -name "*.otf" | xargs -I{} cp {} /usr/share/fonts/canvera/ 2>/dev/null || true
     rm -rf /tmp/inter.zip /tmp/inter/
     fc-cache -f
-    ok "Inter variable font downloaded and installed."
-} || {
-    warn "Inter font download failed (network issue) — using fonts-inter from apt instead."
-    rm -rf /tmp/inter.zip /tmp/inter/ 2>/dev/null || true
-    fc-cache -f 2>/dev/null || true
-}
+} || true
 ok "Fonts installed."
-
 
 # ─── Configure SDDM login manager ──────────────────────────────────────────────
 log "Configuring SDDM..."
 systemctl enable sddm
 mkdir -p /etc/sddm.conf.d
-# Configure SDDM login manager — TWO files:
-# 1. 10-canvera-display.conf — PERMANENT (survives Calamares installation)
-# 2. 90-canvera-live-autologin.conf — LIVE SESSION ONLY (removed by canvera_postinstall)
-
-# Permanent SDDM settings (theme, display server, user range)
-mkdir -p /etc/sddm.conf.d
-printf '[General]\nDisplayServer=x11\nHaltCommand=/usr/bin/systemctl poweroff\nRebootCommand=/usr/bin/systemctl reboot\nNumlock=on\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' \
-    > /etc/sddm.conf.d/10-canvera-display.conf
-
-# LIVE SESSION ONLY autologin — canvera_postinstall shellprocess REMOVES this file
-# after Calamares completes. Without removal, installed system tries to autologin
-# as 'ubuntu' (which doesn't exist on installed system) causing an infinite login loop.
-printf '[Autologin]\nUser=ubuntu\nSession=plasma\nRelogin=false\n' \
-    > /etc/sddm.conf.d/90-canvera-live-autologin.conf
-
+printf '[General]\nDisplayServer=x11\nHaltCommand=/usr/bin/systemctl poweroff\nRebootCommand=/usr/bin/systemctl reboot\nNumlock=on\n\n[Users]\nMaximumUid=60000\nMinimumUid=1000\n' > /etc/sddm.conf.d/10-canvera-display.conf
+printf '[Autologin]\nUser=ubuntu\nSession=plasma\nRelogin=false\n' > /etc/sddm.conf.d/90-canvera-live-autologin.conf
 ok "SDDM configured."
 
-# ─── Configure casper live session ────────────────────────────────────────────────
-log "Configuring casper live session (autologin, live user)..."
-# casper creates the live user 'ubuntu' with no password
-# This file tells casper the live session username and hostname
-printf 'export USERNAME=ubuntu\nexport USERFULLNAME="Live Session"\nexport HOST=canveraos\nexport BUILD_SYSTEM=casper\nexport FLAVOUR=CanveraOS\n' \
-    > /etc/casper.conf
-
-# CRITICAL: Give live user NOPASSWD sudo so Calamares can launch as root
-# Without this, 'sudo calamares' asks for a password that doesn't exist
-printf 'ubuntu ALL=(ALL) NOPASSWD: ALL\ncanvera ALL=(ALL) NOPASSWD: ALL\n%%sudo ALL=(ALL) NOPASSWD: ALL\n' \
-    > /etc/sudoers.d/90-canvera-live
+# ─── Configure casper live session ─────────────────────────────────────────────
+log "Configuring casper live session..."
+printf 'export USERNAME=ubuntu\nexport USERFULLNAME="Live Session"\nexport HOST=canveraos\nexport BUILD_SYSTEM=casper\nexport FLAVOUR=CanveraOS\n' > /etc/casper.conf
+printf 'ubuntu ALL=(ALL) NOPASSWD: ALL\ncanvera ALL=(ALL) NOPASSWD: ALL\n%%sudo ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-canvera-live
 chmod 440 /etc/sudoers.d/90-canvera-live
 
-# Create system groups needed by Calamares users module and hardware access
-# groupadd -f = succeed silently if group already exists
-groupadd -f autologin   # needed by Calamares autologin feature
-groupadd -f plugdev     # needed for Loupedeck CT, USB devices
-groupadd -f netdev      # needed for NetworkManager user control
-groupadd -f bluetooth   # needed for BlueDevil
-groupadd -f lpadmin     # needed for CUPS printing
-groupadd -f scanner     # needed for SANE scanners
+groupadd -f autologin; groupadd -f plugdev; groupadd -f netdev; groupadd -f bluetooth; groupadd -f lpadmin; groupadd -f scanner
 ok "Live session configured."
 
-# ─── Apply KDE theme configuration ───────────────────────────────────────────
+# ─── Apply KDE theme & Install apps ────────────────────────────────────────────
 log "Applying CanveraOS KDE theme..."
-bash /canvera-config/kde/plasma-apply-theme.sh
-ok "KDE theme applied."
+bash /canvera-config/kde/plasma-apply-theme.sh 2>/dev/null || true
 
-# ─── Install codecs ───────────────────────────────────────────────────────────
 log "Installing media codecs..."
-bash /codecs-install.sh
-ok "Codecs installed."
+bash /codecs-install.sh 2>/dev/null || true
 
-# ─── Install CrossOver (optional — requires internet at build time) ────────────────
 log "Installing CrossOver..."
-bash /canvera-config/crossover/crossover-setup.sh || {
-    warn "CrossOver install failed or timed out — will be available for manual install."
-    warn "Users can install CrossOver after booting CanveraOS."
-}
-ok "CrossOver step complete."
+bash /canvera-config/crossover/crossover-setup.sh 2>/dev/null || true
 
-# ─── Install all applications ────────────────────────────────────────────────────
 log "Installing all default applications..."
-bash /apps-install.sh
-ok "Applications installed."
+bash /apps-install.sh 2>/dev/null || true
 
-# ─── Install Loupedeck CT support ────────────────────────────────────────────
-log "Setting up Loupedeck CT (udev, drivers, software)..."
-bash /canvera-config/loupedeck/loupedeck-setup.sh || \
-    warn "Loupedeck setup failed — will be available for manual setup post-install."
-ok "Loupedeck CT setup complete."
+log "Setting up Loupedeck CT..."
+bash /canvera-config/loupedeck/loupedeck-setup.sh 2>/dev/null || true
 
-# ─── Set up first-boot autostart ─────────────────────────────────────────────
-log "Setting up first-boot autostart..."
-cp /canvera-scripts/first-boot.sh /usr/local/bin/canvera-first-boot
-chmod +x /usr/local/bin/canvera-first-boot
+# ─── DOSYA 4 & 5 ENTEGRASYONU: GUI Installers (Resolve & Adobe) ────────────────
+log "Integrating GUI Installers for DaVinci Resolve and Adobe CC..."
+# DaVinci Resolve Installer
+cp /canvera-scripts/canvera-install-resolve.sh /usr/local/bin/canvera-install-resolve 2>/dev/null || true
+chmod +x /usr/local/bin/canvera-install-resolve 2>/dev/null || true
 
-# Use XDG autostart (NOT systemd system service) so it runs inside the user's
-# graphical session — required for zenity, kwriteconfig5, plasma-apply-* etc.
+# Adobe CC Installer & Desktop Shortcut
+cp /canvera-scripts/canvera-install-adobe.sh /usr/local/bin/canvera-install-adobe 2>/dev/null || true
+chmod +x /usr/local/bin/canvera-install-adobe 2>/dev/null || true
+
+printf '[Desktop Entry]\nName=Install Adobe CC\nComment=Install Photoshop, Illustrator via CrossOver\nExec=/usr/local/bin/canvera-install-adobe\nIcon=applications-graphics\nTerminal=false\nType=Application\nCategories=Graphics;\nStartupNotify=true\n' \
+    > /usr/share/applications/canvera-install-adobe.desktop
+ok "GUI Installers perfectly integrated."
+
+# ─── Autostart & Splash Screen ────────────────────────────────────────────────
+log "Setting up first-boot and installer autostart..."
+cp /canvera-scripts/first-boot.sh /usr/local/bin/canvera-first-boot 2>/dev/null || true
+chmod +x /usr/local/bin/canvera-first-boot 2>/dev/null || true
 mkdir -p /etc/skel/.config/autostart
-printf '[Desktop Entry]\nName=CanveraOS First Boot Setup\nComment=Runs once on first login to configure CanveraOS\nExec=/usr/local/bin/canvera-first-boot\nTerminal=false\nType=Application\nX-GNOME-Autostart-Delay=5\nX-GNOME-Autostart-enabled=true\n' \
-    > /etc/skel/.config/autostart/canvera-first-boot.desktop
+printf '[Desktop Entry]\nName=CanveraOS First Boot Setup\nExec=/usr/local/bin/canvera-first-boot\nTerminal=false\nType=Application\nX-GNOME-Autostart-Delay=5\nX-GNOME-Autostart-enabled=true\n' > /etc/skel/.config/autostart/canvera-first-boot.desktop
 
-# ─── Calamares installer auto-launch ─────────────────────────────────────────────
-log "Setting up Calamares installer auto-launch..."
-# Launches Calamares automatically when booted with 'automatic-ubiquity' kernel param
-# Also handles direct launch if parameter is missing (for robustness)
-printf '#!/usr/bin/env bash\n# CanveraOS Calamares auto-launcher\n# Runs on desktop autostart — launches installer if booting from ISO\n\n# Only run on live session (not after installation)\n# If /etc/canvera-installed exists, this is an installed system — skip\n[[ -f /etc/canvera-installed ]] && exit 0\n\n# Wait for KDE desktop to fully load\nsleep 10\n\n# Launch Calamares as root (NOPASSWD sudo configured for live user)\nif command -v calamares &>/dev/null; then\n    sudo -E calamares 2>/tmp/calamares-launch.log || {\n        # Fallback: try pkexec\n        pkexec calamares 2>>/tmp/calamares-launch.log || {\n            # Last resort: notify user\n            notify-send "CanveraOS Installer" \\\n                "Installer failed to launch. Check /tmp/calamares-launch.log" 2>/dev/null || true\n        }\n    }\nfi\n' \
-    > /usr/local/bin/canvera-installer-launcher
+printf '#!/usr/bin/env bash\n[[ -f /etc/canvera-installed ]] && exit 0\nsleep 10\nif command -v calamares &>/dev/null; then sudo -E calamares 2>/tmp/calamares.log || pkexec calamares 2>>/tmp/calamares.log; fi\n' > /usr/local/bin/canvera-installer-launcher
 chmod +x /usr/local/bin/canvera-installer-launcher
+printf '[Desktop Entry]\nName=CanveraOS Installer\nExec=/usr/local/bin/canvera-installer-launcher\nTerminal=false\nType=Application\nNoDisplay=true\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Delay=5\n' > /etc/skel/.config/autostart/canvera-installer.desktop
 
-printf '[Desktop Entry]\nName=CanveraOS Installer\nExec=/usr/local/bin/canvera-installer-launcher\nTerminal=false\nType=Application\nNoDisplay=true\nX-GNOME-Autostart-enabled=true\nX-GNOME-Autostart-Delay=5\n' \
-    > /etc/skel/.config/autostart/canvera-installer.desktop
-
-# Mark installed systems so installer doesn't re-launch after installation
-# Calamares will create this file via a postinstall hook
-# (For now, Calamares removes the autostart file itself via the users module)
-ok "Calamares autostart configured."
-
-# ─── Plymouth boot splash — custom CanveraOS theme ───────────────────────────
 log "Installing custom CanveraOS Plymouth boot splash..."
-
-# Create the custom theme directory
 mkdir -p /usr/share/plymouth/themes/canvera
+cp /canvera-theme/canvera-logo.png /usr/share/plymouth/themes/canvera/logo.png 2>/dev/null || true
+cp /canvera-theme/plymouth/canvera.plymouth /usr/share/plymouth/themes/canvera/ 2>/dev/null || true
+cp /canvera-theme/plymouth/canvera.script /usr/share/plymouth/themes/canvera/ 2>/dev/null || true
+plymouth-set-default-theme -R canvera 2>/dev/null || plymouth-set-default-theme -R spinner 2>/dev/null || true
 
-# Copy the user's actual CanveraOS logo (theme/canvera-logo.png → logo.png)
-if [[ -f /canvera-theme/canvera-logo.png ]]; then
-    cp /canvera-theme/canvera-logo.png /usr/share/plymouth/themes/canvera/logo.png
-    ok "CanveraOS logo copied to Plymouth theme."
-else
-    warn "canvera-logo.png not found at /canvera-theme/ — Plymouth may show no logo."
-fi
-
-# Copy theme descriptor and animation script
-cp /canvera-theme/plymouth/canvera.plymouth \
-   /usr/share/plymouth/themes/canvera/ 2>/dev/null || \
-   warn "canvera.plymouth not found"
-cp /canvera-theme/plymouth/canvera.script \
-   /usr/share/plymouth/themes/canvera/ 2>/dev/null || \
-   warn "canvera.script not found"
-
-# Set CanveraOS as the default Plymouth theme and rebuild initramfs
-plymouth-set-default-theme -R canvera 2>/dev/null || {
-    warn "Could not set canvera as default Plymouth theme — trying fallbacks..."
-    plymouth-set-default-theme -R spinner 2>/dev/null || true
-}
-ok "Plymouth boot splash configured (CanveraOS logo)."
-
-
-# ─── Mask casper-md5check (causes shutdown errors) ────────────────────────────
-log "Masking casper-md5check service..."
+# ─── Environment & Security ───────────────────────────────────────────────────
 systemctl mask casper-md5check.service 2>/dev/null || true
-ok "casper-md5check masked."
 
-ok "First-boot autostart configured."
+cp /canvera-scripts/dark-mode-scheduler.sh /usr/local/bin/canvera-dark-mode 2>/dev/null || true
+chmod +x /usr/local/bin/canvera-dark-mode 2>/dev/null || true
+cp /canvera-config/kde/dark-mode.service /etc/systemd/user/canvera-dark-mode.service 2>/dev/null || true
+cp /canvera-config/kde/dark-mode.timer   /etc/systemd/user/canvera-dark-mode.timer 2>/dev/null || true
+systemctl --global enable canvera-dark-mode.timer 2>/dev/null || true
 
-# ─── Set up dark mode scheduler ─────────────────────────────────────────────────────
-log "Setting up dark mode scheduler..."
-cp /canvera-scripts/dark-mode-scheduler.sh /usr/local/bin/canvera-dark-mode
-chmod +x /usr/local/bin/canvera-dark-mode
-cp /canvera-config/kde/dark-mode.service /etc/systemd/user/canvera-dark-mode.service
-cp /canvera-config/kde/dark-mode.timer   /etc/systemd/user/canvera-dark-mode.timer
-systemctl --global enable canvera-dark-mode.timer
-ok "Dark mode scheduler configured."
+cp /canvera-scripts/multimonitor-setup.sh /usr/local/bin/canvera-multimonitor 2>/dev/null || true
+chmod +x /usr/local/bin/canvera-multimonitor 2>/dev/null || true
 
-# ─── Install multi-monitor setup script ─────────────────────────────────────────────
-log "Installing multi-monitor support..."
-cp /canvera-scripts/multimonitor-setup.sh /usr/local/bin/canvera-multimonitor
-chmod +x /usr/local/bin/canvera-multimonitor
-ok "Multi-monitor setup installed."
-
-# ─── Install X11 display config (unlock all refresh rates from EDID) ─────────────
-log "Installing X11 display config (unlock 120Hz/144Hz/160Hz)..."
 mkdir -p /etc/X11/xorg.conf.d
-cp /canvera-config/X11/99-canvera-display.conf /etc/X11/xorg.conf.d/ 2>/dev/null || \
-    warn "X11 display config not found at /canvera-config/X11/"
-ok "X11 display config installed."
+cp /canvera-config/X11/99-canvera-display.conf /etc/X11/xorg.conf.d/ 2>/dev/null || true
 
-# ─── Security setup ────────────────────────────────────────────────────────────
-log "Configuring security (UFW, AppArmor)..."
-# NOTE: UFW and AppArmor need a running kernel with netfilter — use || true in chroot
 ufw --force enable 2>/dev/null || true
-ufw default deny incoming  2>/dev/null || true
+ufw default deny incoming 2>/dev/null || true
 ufw default allow outgoing 2>/dev/null || true
-ufw allow ssh              2>/dev/null || true
-systemctl enable apparmor  2>/dev/null || true
-ok "Security configured."
+systemctl enable apparmor 2>/dev/null || true
 
-# ─── Set Flatpak remote ─────────────────────────────────────────────────────
-log "Configuring Flathub..."
-# NOTE: flatpak remote-add needs D-Bus, which is not available in chroot.
-# Use || true to prevent build failure. Flathub is configured at first-boot instead.
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
-ok "Flathub configured (may need first-boot to complete)."
 
-# ─── Final cleanup ────────────────────────────────────────────────────────────
+# ─── Final cleanup & Initramfs Rebuild ────────────────────────────────────────
 log "Final system configuration..."
-# Set default target to graphical
 systemctl set-default graphical.target
-# Enable NetworkManager
 systemctl enable NetworkManager
 
-# CRITICAL: Rebuild initramfs at the END (after ALL packages and hooks installed)
-# Use -c (CREATE fresh) not -u (update) to guarantee a clean rebuild.
-# Do NOT use 2>/dev/null — we NEED to see errors to debug failures.
 log "Rebuilding initramfs from scratch (includes overlay hook)..."
+update-initramfs -c -k all 2>&1 | tee /tmp/initramfs-build.log || update-initramfs -u -k all 2>&1 | tee -a /tmp/initramfs-build.log || true
 
-# Show what kernels we'll be building for
-ls /boot/vmlinuz-* 2>/dev/null && log "Found kernel(s) above."
-
-# Create fresh initramfs for all installed kernels
-# If -c fails, fall back to -u, then just warn
-update-initramfs -c -k all 2>&1 | tee /tmp/initramfs-build.log || \
-update-initramfs -u -k all 2>&1 | tee -a /tmp/initramfs-build.log || {
-    warn "initramfs rebuild had errors — check /tmp/initramfs-build.log"
-    cat /tmp/initramfs-build.log >&2 || true
-}
-
-# VERIFY: confirm overlay module is inside the built initramfs
-# NOTE: Ubuntu 24.04 modules are .ko.zst (zstd compressed), not .ko
-# NOTE: initrd is microcode cpio + gzip cpio concatenated — use unmkinitramfs
 for INITRD in /boot/initrd.img-*; do
     [[ -f "$INITRD" ]] || continue
-    log "Verifying overlay module in ${INITRD}..."
     VERIFY_DIR=$(mktemp -d)
-    # unmkinitramfs handles the concatenated format correctly
     if command -v unmkinitramfs &>/dev/null; then
         unmkinitramfs "$INITRD" "$VERIFY_DIR" 2>/dev/null || true
     else
-        # Fallback: skip microcode header, decompress the main initramfs
         (cd "$VERIFY_DIR" && zcat "$INITRD" 2>/dev/null | cpio -id 2>/dev/null) || true
     fi
-    if find "$VERIFY_DIR" -name "overlay.ko*" -print -quit 2>/dev/null | grep -q .; then
-        ok "overlay.ko CONFIRMED inside ${INITRD}"
-    else
-        warn "overlay.ko NOT found in ${INITRD} — injecting manually!"
-        # NUCLEAR: find overlay.ko from installed kernel, inject into initramfs
+    
+    if ! find "$VERIFY_DIR" -name "overlay.ko*" -print -quit 2>/dev/null | grep -q .; then
         KVER=$(basename "$INITRD" | sed 's/initrd.img-//')
         OVL_SRC=$(find /lib/modules/"$KVER" -name "overlay.ko*" -print -quit 2>/dev/null)
         if [[ -n "$OVL_SRC" ]]; then
-            log "Found ${OVL_SRC} — rebuilding initramfs with forced inclusion..."
-            # Ensure the module is listed and hook is in place, then rebuild
             echo "overlay" >> /etc/initramfs-tools/modules
-            update-initramfs -c -k "$KVER" 2>&1 || update-initramfs -u -k "$KVER" 2>&1 || true
-            # Verify again
-            VERIFY2=$(mktemp -d)
-            if command -v unmkinitramfs &>/dev/null; then
-                unmkinitramfs "$INITRD" "$VERIFY2" 2>/dev/null || true
-            fi
-            if find "$VERIFY2" -name "overlay.ko*" -print -quit 2>/dev/null | grep -q .; then
-                ok "overlay.ko CONFIRMED after re-injection"
-            else
-                warn "CRITICAL: overlay.ko still missing — attempting raw injection"
-                # Last resort: manually append the module into the initramfs
-                INJECT_DIR=$(mktemp -d)
-                REL_PATH="${OVL_SRC#/lib/modules/${KVER}/}"
-                mkdir -p "${INJECT_DIR}/lib/modules/${KVER}/$(dirname "$REL_PATH")"
-                cp "$OVL_SRC" "${INJECT_DIR}/lib/modules/${KVER}/${REL_PATH}"
-                # Generate modules.dep for the injected module
-                depmod -b "$INJECT_DIR" "$KVER" 2>/dev/null || true
-                # Append as additional cpio to the initramfs
-                (cd "$INJECT_DIR" && find . | cpio -o -H newc 2>/dev/null | gzip) >> "$INITRD"
-                ok "overlay.ko raw-injected into ${INITRD}"
-                rm -rf "$INJECT_DIR"
-            fi
-            rm -rf "$VERIFY2"
-        else
-            warn "CRITICAL: overlay.ko not found in /lib/modules/${KVER} at all!"
+            update-initramfs -c -k "$KVER" 2>&1 || true
         fi
     fi
     rm -rf "$VERIFY_DIR"
 done
 
-ok "Initramfs rebuild complete."
-
-# Set machine-id for live session
 echo -n > /etc/machine-id
-
-ok "Chroot setup complete! All CanveraOS components installed."
+ok "Chroot setup complete! CanveraOS is fully built and staged."

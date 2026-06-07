@@ -66,32 +66,30 @@ mkdir -p "${ISO_DIR}/boot/grub"
 mkdir -p "${ISO_DIR}/EFI/BOOT"
 
 # GRUB config (using printf to avoid heredoc issues)
-# CRITICAL: 'search' must come first — sets root to the CD so GRUB can find /casper/vmlinuz
 printf '# CanveraOS GRUB Boot Configuration
-# Install-only ISO — boots directly to graphical installer
 set default=0
-set timeout=10
+set timeout=15
 
 # Find and set the ISO root device by its volume label
 if [ -z "$root" ]; then
   search --no-floppy --label --set=root CANVERAOS_1_0
 fi
 
-menuentry "Install CanveraOS" --class canvera --class gnu-linux --class os {
+menuentry "Try CanveraOS (Live Session)" --class canvera --class gnu-linux --class os {
     search --no-floppy --label --set=root CANVERAOS_1_0
-    linux   /casper/vmlinuz boot=casper automatic-ubiquity quiet splash ---
+    linux   /casper/vmlinuz boot=casper quiet splash ---
     initrd  /casper/initrd
 }
 
-menuentry "Install CanveraOS (Safe Graphics / VirtualBox)" --class canvera {
+menuentry "Install CanveraOS (Direct Install)" --class canvera {
     search --no-floppy --label --set=root CANVERAOS_1_0
-    linux   /casper/vmlinuz boot=casper automatic-ubiquity quiet splash nomodeset ---
+    linux   /casper/vmlinuz boot=casper quiet splash direct-install ---
     initrd  /casper/initrd
 }
 
-menuentry "CanveraOS (Debug - show boot messages)" --class canvera {
+menuentry "CanveraOS (Safe Graphics / Nomodeset)" --class canvera {
     search --no-floppy --label --set=root CANVERAOS_1_0
-    linux   /casper/vmlinuz boot=casper ---
+    linux   /casper/vmlinuz boot=casper quiet splash nomodeset ---
     initrd  /casper/initrd
 }
 ' \

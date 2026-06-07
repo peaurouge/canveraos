@@ -1,0 +1,31 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2870
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Roman;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 [Desktop Entry]\
+Type=Service\
+ServiceTypes=KonqPopupMenu/Plugin\
+MimeType=image/png;image/jpeg;image/webp;image/tiff;image/x-adobe-dng;\
+Actions=convertToWebp;convertToPng;resizeHD;\
+X-KDE-Submenu=Quick Actions (CanveraOS)\
+X-KDE-Priority=TopLevel\
+\
+[Desktop Action convertToWebp]\
+Name=Convert to WebP (Optimized)\
+Icon=image-webp\
+Exec=for f in %F; do convert "$f" -quality 85 "$\{f%.*\}.webp"; done\
+\
+[Desktop Action convertToPng]\
+Name=Convert to PNG (Transparent)\
+Icon=image-png\
+Exec=for f in %F; do convert "$f" "$\{f%.*\}.png"; done\
+\
+[Desktop Action resizeHD]\
+Name=Scale to HD (1920x1080)\
+Icon=transform-scale\
+Exec=for f in %F; do convert "$f" -resize 1920x1080\\> "$\{f%.*\}_HD.$\{f##*.\}"; done}
