@@ -116,6 +116,13 @@ ok "Files copied."
 # ─── Step 5: Run chroot setup ────────────────────────────────────────────────
 log "Installing LIVE boot infrastructure inside chroot..."
 
+# YENİ EKLENEN KISIM: Universe ve Multiverse depolarını aktif ediyoruz
+cat <<EOF > "${CHROOT_DIR}/etc/apt/sources.list"
+deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME} main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-security main restricted universe multiverse
+EOF
+
 chroot "${CHROOT_DIR}" apt-get update
 
 chroot "${CHROOT_DIR}" apt-get install -y \
@@ -128,7 +135,6 @@ chroot "${CHROOT_DIR}" apt-get install -y \
 
 ok "Live boot packages installed."
 
-# DÜZELTME BURADA: Paketler kuruldu, klasörler oluştu. Şimdi modülü ekleyebiliriz.
 log "Enabling overlay support..."
 echo overlay >> "${CHROOT_DIR}/etc/initramfs-tools/modules"
 ok "Overlay module enabled."
