@@ -93,7 +93,7 @@ cp -r "${PROJECT_ROOT}/config"    "${CHROOT_DIR}/canvera-config"
 cp -r "${PROJECT_ROOT}/theme"     "${CHROOT_DIR}/canvera-theme"
 cp -r "${PROJECT_ROOT}/scripts"   "${CHROOT_DIR}/canvera-scripts"
 cp -r "${PROJECT_ROOT}/installer" "${CHROOT_DIR}/canvera-installer"
-cp "${PROJECT_ROOT}/build/chroot-setup.sh"  "${CHROOT_DIR}/chroot-setup.sh"
+cp "${PROJECT_ROOT}/build/chroot-setup.sh"   "${CHROOT_DIR}/chroot-setup.sh"
 cp "${PROJECT_ROOT}/build/codecs-install.sh" "${CHROOT_DIR}/codecs-install.sh"
 cp "${PROJECT_ROOT}/build/apps-install.sh"   "${CHROOT_DIR}/apps-install.sh"
 chmod +x "${CHROOT_DIR}/chroot-setup.sh" "${CHROOT_DIR}/codecs-install.sh" "${CHROOT_DIR}/apps-install.sh"
@@ -108,8 +108,12 @@ deb http://security.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-security main restrict
 EOF
 
 chroot "${CHROOT_DIR}" apt-get update
-# HATA ÇÖZÜMÜ 2: linux-image-generic yerine linux-generic kullanılarak Headers eksikliği giderildi.
-chroot "${CHROOT_DIR}" apt-get install -y casper initramfs-tools linux-generic squashfs-tools
+
+# linux-modules-extra-generic; overlay.ko Ubuntu 24.04'te bu pakette bulunur
+chroot "${CHROOT_DIR}" apt-get install -y \
+    casper initramfs-tools \
+    linux-generic linux-modules-extra-generic \
+    squashfs-tools overlayroot
 
 chroot "${CHROOT_DIR}" /bin/bash /chroot-setup.sh
 ok "Chroot setup complete."
@@ -117,18 +121,19 @@ ok "Chroot setup complete."
 # ─── Step 6: Fix Kernel Modules & Clean up ────────────────────────────────────
 log "STEP 6/8 — Resolving Kernel Module Dependencies..."
 
-# HATA ÇÖZÜMÜ 1: Sistemi tam isabetle hedefliyoruz (Host kernel hatasını aşmak için)
 KVER=$(ls -1 "${CHROOT_DIR}/boot"/vmlinuz-* | grep -v "\.old" | sort -V | tail -n 1 | sed 's/.*vmlinuz-//')
 log "Target Kernel Detected: ${KVER}"
 
-# Hayati modülleri initramfs içine zorla yazıyoruz
-for mod in overlay squashfs loop; do
-    if ! grep -q "^${mod}$" "${CHROOT_DIR}/etc/initramfs-tools/modules"; then
+# overlay + overlayfs her ikisini de ekle (kernel versiyonuna göre isim farklı olabilir)
+for mod in overlay overlayfs squashfs loop; do
+    grep -q "^${mod}$" "${CHROOT_DIR}/etc/initramfs-tools/modules" || \
         echo "${mod}" >> "${CHROOT_DIR}/etc/initramfs-tools/modules"
-    fi
 done
 
-# HATA ÇÖZÜMÜ 1 DEVAMI: Sadece hedef çekirdek için modül ağacı (depmod) ve initramfs yaratıyoruz
+# MODULES=most: initramfs'in çok minimal kalmasını engeller
+sed -i 's/^MODULES=.*/MODULES=most/' "${CHROOT_DIR}/etc/initramfs-tools/initramfs.conf" || \
+    echo "MODULES=most" >> "${CHROOT_DIR}/etc/initramfs-tools/initramfs.conf"
+
 log "Rebuilding kernel module tree (depmod) for ${KVER}..."
 chroot "${CHROOT_DIR}" depmod -a "${KVER}"
 
@@ -154,22 +159,23 @@ ok "Virtual filesystems unmounted."
 log "STEP 7/8 — Building ISO filesystem..."
 mkdir -p "${ISO_DIR}/casper"
 
-cp "${CHROOT_DIR}/boot/vmlinuz-${KVER}" "${ISO_DIR}/casper/vmlinuz"
+cp "${CHROOT_DIR}/boot/vmlinuz-${KVER}"    "${ISO_DIR}/casper/vmlinuz"
 cp "${CHROOT_DIR}/boot/initrd.img-${KVER}" "${ISO_DIR}/casper/initrd"
 
 log "Compressing filesystem (this takes time)..."
-mksquashfs "${CHROOT_DIR}" "${ISO_DIR}/casper/filesystem.squashfs" -comp xz -b 1M -Xdict-size 100% -e boot
+mksquashfs "${CHROOT_DIR}" "${ISO_DIR}/casper/filesystem.squashfs" \
+    -comp xz -b 1M -Xdict-size 100% -e boot
 
-# HATA ÇÖZÜMÜ 3: GRUB'a "union=overlay" parametresi eklenerek Casper kararsızlığı çözüldü
+# union=overlay parametresi Ubuntu 22.04+ casper'da kaldırıldı; casper overlay'i kendisi yönetir
 cat <<EOF > "${ISO_DIR}/boot/grub/grub.cfg"
 set timeout=5
 set default=0
 menuentry "Try CanveraOS" {
-    linux /casper/vmlinuz boot=casper union=overlay quiet splash ---
+    linux /casper/vmlinuz boot=casper quiet splash ---
     initrd /casper/initrd
 }
 menuentry "Install CanveraOS" {
-    linux /casper/vmlinuz boot=casper union=overlay quiet splash direct-install ---
+    linux /casper/vmlinuz boot=casper quiet splash direct-install ---
     initrd /casper/initrd
 }
 EOF
@@ -179,3 +185,6 @@ ok "ISO filesystem built."
 log "STEP 8/8 — Generating bootable ISO..."
 grub-mkrescue -o "${OUTPUT_ISO}" "${ISO_DIR}"
 ok "ISO Generation Complete: ${OUTPUT_ISO}"
+
+echo -e "\n${BOLD}${GREEN}  ✔ CanveraOS-${CANVERA_VERSION}-${ARCH}.iso başarıyla oluşturuldu!${RESET}"
+echo -e "  Çıktı: ${OUTPUT_ISO}\n"
