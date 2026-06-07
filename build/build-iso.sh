@@ -117,12 +117,35 @@ chmod +x "${CHROOT_DIR}/chroot-setup.sh" \
          "${CHROOT_DIR}/codecs-install.sh" \
          "${CHROOT_DIR}/apps-install.sh"
 ok "Files copied."
+log "Enabling overlay support..."
 
-# ─── Step 5: Run chroot setup ─────────────────────────────────────────────────
+echo overlay >> "${CHROOT_DIR}/etc/initramfs-tools/modules"
+
+ok "Overlay module enabled."
+
+# ─── Step 5: Run chroot setup ────────────────────────────────────────────────
+log "Installing LIVE boot infrastructure inside chroot..."
+
+chroot "${CHROOT_DIR}" apt-get update
+
+chroot "${CHROOT_DIR}" apt-get install -y \
+    casper \
+    live-boot \
+    live-config \
+    initramfs-tools \
+    linux-image-generic \
+    squashfs-tools
+
+ok "Live boot packages installed."
 log "STEP 5/8 — Running chroot setup (KDE, themes, apps, codecs)..."
 log "  This will take 30–60 minutes depending on internet speed."
 chroot "${CHROOT_DIR}" /bin/bash /chroot-setup.sh
 ok "Chroot setup complete."
+log "Rebuilding initramfs with overlay support..."
+
+chroot "${CHROOT_DIR}" update-initramfs -u -k all
+
+ok "Initramfs rebuilt."
 
 # ─── Step 6: Clean up chroot ──────────────────────────────────────────────────
 log "STEP 6/8 — Cleaning up chroot..."
@@ -137,6 +160,12 @@ chroot "${CHROOT_DIR}" rm -rf \
     /canvera-scripts \
     /canvera-installer
 ok "Chroot cleaned."
+
+log "Verifying live boot components..."
+
+ls "${CHROOT_DIR}/boot" || true
+
+ok "Boot components checked."
 
 # ─── Step 7: Pack squashfs + build ISO ───────────────────────────────────────
 log "STEP 7/8 — Packing filesystem and building ISO..."
