@@ -107,12 +107,9 @@ deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates main restricted
 deb http://security.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-security main restricted universe multiverse
 EOF
 
-chroot "${CHROOT_DIR}" apt-get update
-
-# linux-modules-extra-generic; overlay.ko Ubuntu 24.04'te bu pakette bulunur
 chroot "${CHROOT_DIR}" apt-get install -y \
     casper initramfs-tools \
-    linux-generic linux-modules-extra-generic \
+    linux-generic \
     squashfs-tools overlayroot
 
 chroot "${CHROOT_DIR}" /bin/bash /chroot-setup.sh
