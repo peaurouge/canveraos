@@ -115,12 +115,16 @@ deb http://security.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-security main restrict
 EOF
 
 chroot "${CHROOT_DIR}" apt-get update
-chroot "${CHROOT_DIR}" apt-get install -y casper live-boot live-config initramfs-tools linux-image-generic squashfs-tools
-echo overlay >> "${CHROOT_DIR}/etc/initramfs-tools/modules"
+
+# HATA ÇÖZÜMÜ 1: live-boot ve live-config paketleri KALDIRILDI. Sadece casper kullanılacak.
+chroot "${CHROOT_DIR}" apt-get install -y casper initramfs-tools linux-image-generic squashfs-tools
+
+# Overlay modülünü zorla en başından listeye ekliyoruz
+if ! grep -q "^overlay$" "${CHROOT_DIR}/etc/initramfs-tools/modules"; then
+    echo overlay >> "${CHROOT_DIR}/etc/initramfs-tools/modules"
+fi
 
 chroot "${CHROOT_DIR}" /bin/bash /chroot-setup.sh
-
-chroot "${CHROOT_DIR}" update-initramfs -u -k all
 ok "Chroot setup complete."
 
 # ─── Step 6: Clean up chroot ──────────────────────────────────────────────────
@@ -128,7 +132,11 @@ log "STEP 6/8 — Cleaning up chroot..."
 chroot "${CHROOT_DIR}" apt-get autoremove -y --purge
 chroot "${CHROOT_DIR}" apt-get clean
 chroot "${CHROOT_DIR}" rm -rf /tmp/* /var/tmp/* /chroot-setup.sh /codecs-install.sh /apps-install.sh /canvera-config /canvera-theme /canvera-scripts /canvera-installer
-ok "Chroot cleanup complete."
+
+# PARANOYAK GÜVENLİK: Tüm işlemler bittikten sonra initramfs'i sıfırdan ve kesin olarak tekrar yarat.
+log "Rebuilding initramfs one final time to guarantee overlay is injected..."
+chroot "${CHROOT_DIR}" update-initramfs -c -k all
+ok "Chroot cleanup and final initramfs build complete."
 
 # ─── Step 6.5: CRITICAL - Unmount virtual filesystems BEFORE squashing ────────
 log "STEP 6.5 — Unmounting virtual filesystems to prevent infinite compression loop..."
@@ -143,8 +151,11 @@ ok "Virtual filesystems unmounted."
 log "STEP 7/8 — Building ISO filesystem..."
 mkdir -p "${ISO_DIR}/casper"
 
-cp "${CHROOT_DIR}/boot/vmlinuz" "${ISO_DIR}/casper/vmlinuz"
-cp "${CHROOT_DIR}/boot/initrd.img" "${ISO_DIR}/casper/initrd"
+# HATA ÇÖZÜMÜ 2: Kısayol kopyalamayı bıraktık. Sistemdeki en son versiyon numaralı çekirdeği zorla bulup kopyalıyoruz.
+KVER=$(ls -1 "${CHROOT_DIR}/boot"/vmlinuz-* | grep -v "\.old" | sort -V | tail -n 1 | sed 's/.*vmlinuz-//')
+log "Kernel Version Detected: ${KVER}. Copying payload..."
+cp "${CHROOT_DIR}/boot/vmlinuz-${KVER}" "${ISO_DIR}/casper/vmlinuz"
+cp "${CHROOT_DIR}/boot/initrd.img-${KVER}" "${ISO_DIR}/casper/initrd"
 
 log "Compressing filesystem (this takes time)..."
 mksquashfs "${CHROOT_DIR}" "${ISO_DIR}/casper/filesystem.squashfs" -comp xz -b 1M -Xdict-size 100% -e boot
